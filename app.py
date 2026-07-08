@@ -42,7 +42,7 @@ rank_to_display_score = ce.rank_to_display_score
 score_display_color = ce.score_display_color
 rate_player_vs_eligible_pool = ce.rate_player_vs_eligible_pool
 
-from player_insights import build_headline_summary, build_player_insights
+from player_insights import build_headline_summary
 
 
 def fmt_rating_score(pass_rating) -> str:
@@ -128,28 +128,18 @@ st.markdown(
         font-size: 0.88rem;
         margin-bottom: 0.35rem;
     }
-    .headline-profile {
-        color: #e2e8f0;
-        font-size: 0.86rem;
-        font-style: italic;
-        line-height: 1.35;
-        margin-bottom: 0.55rem;
+    .metric-label-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.12rem;
+        min-width: 0;
     }
-    .insights-list {
-        list-style: none;
-        margin: 0 0 0.65rem 0;
-        padding: 0;
+    .metric-rank-sub {
+        color: #64748b;
+        font-size: 0.74rem;
+        font-weight: 600;
+        line-height: 1.2;
     }
-    .insights-list li {
-        font-size: 0.82rem;
-        line-height: 1.4;
-        padding: 0.28rem 0;
-        border-bottom: 1px solid #1f293f;
-        color: #cbd5e1;
-    }
-    .insights-list li:last-child { border-bottom: none; }
-    .insight-strong { color: #86efac; }
-    .insight-develop { color: #fcd34d; }
     .metric-tip {
         position: relative;
         display: inline-flex;
@@ -444,13 +434,20 @@ def _label_html(key: str) -> str:
     )
 
 
+def _metric_rank_subline(player: dict, metric_ranks: dict, key: str) -> str:
+    info = metric_ranks.get(key)
+    if not info:
+        return ""
+    rank = int(info["rank"])
+    group = str(player.get("position_group") or "—")
+    if rank == 1:
+        return f"Líder entre {group}"
+    return f"{rank}º entre {group}"
+
+
 def _headline_html(player: dict, metric_ranks: dict) -> str:
     summary = build_headline_summary(player, metric_ranks)
-    insights = build_player_insights(player, metric_ranks)
-    insight_items = []
-    for kind, text in insights:
-        css = "insight-strong" if kind == "strong" else "insight-develop" if kind == "develop" else ""
-        insight_items.append(f'<li class="{css}">{html.escape(text)}</li>')
+    warnings = _rating_warnings_html(player)
     return (
         '<div class="headline-block">'
         f'<div class="headline-top">'
@@ -458,8 +455,7 @@ def _headline_html(player: dict, metric_ranks: dict) -> str:
         f'<span class="headline-band">{html.escape(summary["band"])}</span>'
         f"</div>"
         f'<div class="headline-rank">{html.escape(summary["rank_line"])}</div>'
-        f'<div class="headline-profile">{html.escape(summary["profile"])}</div>'
-        f'<ul class="insights-list">{"".join(insight_items)}</ul>'
+        f'{warnings}'
         "</div>"
     )
 
@@ -469,33 +465,22 @@ def _metric_line_html(
     key: str,
     value: str,
     metric_ranks: dict,
+    player: dict,
     *,
     show_rank: bool = True,
     use_tooltip_label: bool = True,
 ) -> str:
-    badge = ""
-    if show_rank:
-        info = metric_ranks.get(key)
-        if info:
-            rank = int(info["rank"])
-            total = int(info["total"])
-            color = rank_color(rank, total)
-            badge = (
-                f'<span class="rank-tip">'
-                f'<span class="rank-badge" style="background:{color}"></span>'
-                f'<span class="rank-tipbox">{rank}/{total}</span>'
-                f"</span>"
-            )
-    value_html = (
-        f'<span class="val-wrap">{badge}<span class="stat-val">{html.escape(value)}</span></span>'
-        if badge
-        else f'<span class="stat-val">{html.escape(value)}</span>'
-    )
     label_html = _label_html(key) if use_tooltip_label else html.escape(label)
+    rank_sub = ""
+    if show_rank:
+        sub = _metric_rank_subline(player, metric_ranks, key)
+        if sub:
+            rank_sub = f'<div class="metric-rank-sub">{html.escape(sub)}</div>'
+    label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
     return (
         '<div class="metric-line">'
-        f"<span>{label_html}</span>"
-        f"{value_html}"
+        f"{label_block}"
+        f'<span class="stat-val">{html.escape(value)}</span>'
         "</div>"
     )
 
@@ -549,6 +534,7 @@ def _build_sections_html(
                     key,
                     _stat_display(player, key),
                     metric_ranks,
+                    player,
                     show_rank=show_rank,
                 )
             )
@@ -663,7 +649,6 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         f"<h3>{html.escape(player['player_name'])}</h3>"
         f'<div class="sub">{html.escape(player.get("team", "—"))} · {html.escape(str(player.get("position", "—")))}</div>'
         f"{_headline_html(player, metric_ranks)}"
-        f"{_rating_header_html(player, metric_ranks)}"
         + _build_sections_html(player, metric_ranks, general_sections)
         + "</div>"
     )
