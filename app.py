@@ -43,8 +43,6 @@ rank_to_display_score = ce.rank_to_display_score
 score_display_color = ce.score_display_color
 rate_player_vs_eligible_pool = ce.rate_player_vs_eligible_pool
 
-DRIBBLE_STAT_KEYS = ("dribbles_total", "dribbles_success", "dribble_success_pct")
-
 
 def fmt_rating_score(pass_rating) -> str:
     if pass_rating is None:
@@ -536,11 +534,11 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
             (
                 "minutes",
                 "carries_total",
-                "passes_completed",
                 "minutes_pct",
                 "impact_passes",
                 "high_impact_passes",
-                *DRIBBLE_STAT_KEYS,
+                "dribbles_total",
+                "dribble_success_pct",
             ),
             False,
         ),

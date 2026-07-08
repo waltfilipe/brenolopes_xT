@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 1
+DATA_CACHE_VERSION = 24
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -158,10 +158,9 @@ METRIC_LABELS: dict[str, str] = {
     "final_third_passes": "Conduções ao Terço Final",
     "key_passes": "Key Passes",
     "long_balls": "Conduções Longas",
-    "dribbles_total": "Dribles",
-    "dribbles_success": "Dribles certos",
-    "dribble_success_pct": "% dribles certos",
     "carries_total": "Conduções",
+    "dribbles_total": "Dribles",
+    "dribble_success_pct": "% Dribles Certos",
 }
 
 TOOLTIP_EXTRA_KEYS: tuple[str, ...] = ("minutes", "passes_completed")
