@@ -18,7 +18,6 @@ import streamlit.components.v1 as components
 
 import carries_engine as ce
 from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map
-from player_insights import build_headline_summary, build_player_insights
 
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
@@ -42,6 +41,8 @@ metric_tooltip = ce.metric_tooltip
 rank_to_display_score = ce.rank_to_display_score
 score_display_color = ce.score_display_color
 rate_player_vs_eligible_pool = ce.rate_player_vs_eligible_pool
+
+from player_insights import build_headline_summary, build_player_insights
 
 
 def fmt_rating_score(pass_rating) -> str:

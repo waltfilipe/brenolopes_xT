@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from carries_engine import fmt_stat_value, metric_label, metric_tooltip
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
 
 POSITION_GROUP_LABELS: dict[str, str] = {
     "Zagueiros": "zagueiros",
@@ -22,6 +25,12 @@ INSIGHT_METRICS: tuple[tuple[str, str], ...] = (
     ("dribbles_final_third_p90", "Dribles certos no ataque"),
     ("dxt_gt_015_pct", "Conduções de alto avanço"),
 )
+
+
+def _fmt_stat_value(key: str, value) -> str:
+    import carries_engine as ce
+
+    return ce.fmt_stat_value(key, value)
 
 
 def rating_display_score(pass_rating: float | None) -> float | None:
@@ -125,8 +134,7 @@ def build_player_insights(player: dict, metric_ranks: dict, *, max_items: int = 
         if total <= 1:
             continue
         pct = _rank_percentile(rank, total)
-        value_txt = fmt_stat_value(key, player.get(key))
-        label = metric_label(key)
+        value_txt = _fmt_stat_value(key, player.get(key))
         line = f"{short_label}: {value_txt} ({rank}º entre {total})"
 
         if pct <= 0.20:
