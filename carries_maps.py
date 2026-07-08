@@ -26,6 +26,7 @@ ARROW_HEADLENGTH = 1.15
 ARROW_ALPHA_EMPH = 0.82
 PASS_START_MARKER_SIZE = 7
 
+COLOR_CARRY = "#94a3b8"
 COLOR_PROGRESSIVE = "#7dd3fc"
 COLOR_HIGHLY_PROGRESSIVE = "#fcd34d"
 CMAP_PASS_DEST = LinearSegmentedColormap.from_list(
@@ -95,6 +96,55 @@ def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: f
         zorder=3,
         alpha=alpha,
     )
+
+
+def draw_all_carries_map(
+    passes,
+    player_name: str,
+    match_label: str = "todos os jogos",
+    *,
+    compact: bool = True,
+):
+    """All completed ball-carries (start → end arrows)."""
+    if compact:
+        figsize = (FIG_W_COMPACT, FIG_H_COMPACT)
+        dpi = FIG_DPI_COMPACT
+    else:
+        figsize = (FIG_W, FIG_H)
+        dpi = FIG_DPI
+
+    fig_w = figsize[0]
+    scale = _map_scale(fig_w)
+    subset = passes[passes["has_end"]].copy()
+    fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
+
+    if subset.empty:
+        ax.text(60, 40, "Sem conduções", ha="center", va="center", color="white", fontsize=9)
+    else:
+        for row in subset.itertuples(index=False):
+            _delicate_arrows(
+                pitch, ax,
+                row.x_start, row.y_start, row.x_end, row.y_end,
+                COLOR_CARRY, scale, alpha=0.72,
+            )
+            pitch.scatter(
+                row.x_start, row.y_start,
+                s=PASS_START_MARKER_SIZE, marker="o", color=COLOR_CARRY,
+                edgecolors="white", linewidths=0.3, ax=ax, zorder=6, alpha=0.72,
+            )
+
+    legend_handles = [
+        Line2D([0], [0], color=COLOR_CARRY, lw=1.4 * scale, label="Condução", alpha=0.80),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_CARRY,
+               markersize=4, linestyle="None", label="Origem da condução"),
+    ]
+    _add_map_legend(ax, legend_handles, fig_w=fig_w)
+    ax.set_title(
+        f"{player_name}\nConduções · {match_label}",
+        color="white", fontsize=8.4 * scale, pad=5,
+    )
+    _attack_arrow(fig, fig_w=fig_w)
+    return fig
 
 
 def draw_impact_pass_map(

@@ -17,7 +17,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import carries_engine as ce
-from carries_maps import draw_dribble_map, draw_impact_pass_map, draw_pass_destination_heatmap
+from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map
 
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
@@ -506,17 +506,17 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
 
     with col_map1:
         if carries is None or carries.empty:
+            st.warning("Sem conduções para este jogador.")
+        else:
+            fig_all = draw_all_carries_map(carries, player["player_name"], team_label, compact=False)
+            st.pyplot(fig_all, clear_figure=True, use_container_width=True)
+
+    with col_map2:
+        if carries is None or carries.empty:
             st.warning("Sem conduções de impacto para este jogador.")
         else:
             fig = draw_impact_pass_map(carries, player["player_name"], team_label, compact=False)
             st.pyplot(fig, clear_figure=True, use_container_width=True)
-
-    with col_map2:
-        if carries is None or carries.empty:
-            st.warning("Sem heatmap de destino.")
-        else:
-            fig_heat = draw_pass_destination_heatmap(carries, player["player_name"], team_label, compact=False)
-            st.pyplot(fig_heat, clear_figure=True, use_container_width=True)
 
     with col_map3:
         if dribbles is None or dribbles.empty:
