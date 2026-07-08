@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 25
+DATA_CACHE_VERSION = 26
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -121,6 +121,9 @@ XT_V3_NEG_RECYCLE_X_MAX = 60.0
 XT_V5_MAX_DELTA_DEF, XT_V5_MAX_DELTA_MID = 0.28, 0.36
 XT_V5_MAX_DELTA_ATT, XT_V5_MAX_DELTA_BOX = 0.42, 0.52
 XT_V4_BOX_X_START = 90.0
+PENALTY_BOX_X_MIN = 102.0
+PENALTY_BOX_Y_MIN = 18.0
+PENALTY_BOX_Y_MAX = 62.0
 
 RANKING_METRIC_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Volume & impact rate (p90)", (
@@ -144,8 +147,8 @@ METRIC_LABELS: dict[str, str] = {
     "dxt_gt_015_pct": "%Conduções deltaxT > 0.15",
     "carries_to_box": "Conduções para área",
     "carries_to_box_p90": "Conduções para área p90",
-    "dribbles_final_third": "Dribles no Terço Final",
-    "dribbles_final_third_p90": "Dribles no Terço Final p90",
+    "dribbles_final_third": "Dribles Certos no Terço Final",
+    "dribbles_final_third_p90": "Dribles Certos no Terço Final p90",
     "carries_total": "Conduções",
     "dribbles_total": "Dribles",
     "dribble_success_pct": "% Dribles Certos",
@@ -165,12 +168,9 @@ RELATIVE_METRIC_KEYS: tuple[str, ...] = (
     "dxt_gt_015_pct",
 )
 
-AREA_METRIC_KEYS: tuple[str, ...] = (
+GENERAL_CARRIES_DRIBBLES_METRIC_KEYS: tuple[str, ...] = (
     "carries_to_box",
     "carries_to_box_p90",
-)
-
-FINAL_THIRD_DRIBBLE_METRIC_KEYS: tuple[str, ...] = (
     "dribbles_final_third",
     "dribbles_final_third_p90",
 )
@@ -178,16 +178,14 @@ FINAL_THIRD_DRIBBLE_METRIC_KEYS: tuple[str, ...] = (
 SECTION_RATING_GROUPS: dict[str, tuple[str, ...]] = {
     "metrics_absolute": ABSOLUTE_METRIC_KEYS,
     "metrics_relative": RELATIVE_METRIC_KEYS,
-    "carries_to_area": AREA_METRIC_KEYS,
-    "final_third_dribbles": FINAL_THIRD_DRIBBLE_METRIC_KEYS,
+    "general_carries_dribbles": GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
 }
 
 RANK_DISPLAY_KEYS: tuple[str, ...] = (
     *TOOLTIP_EXTRA_KEYS,
     "minutes_pct",
     *RATING_METRIC_KEYS,
-    *AREA_METRIC_KEYS,
-    *FINAL_THIRD_DRIBBLE_METRIC_KEYS,
+    *GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
 )
 
 TOOLTIP_LABELS: dict[str, str] = {
@@ -824,6 +822,18 @@ def _per90(total: float, minutes: float | None) -> float:
     return round(float(total) * 90.0 / float(minutes), 3) if minutes else 0.0
 
 
+def _ended_in_penalty_box(passes: pd.DataFrame) -> pd.Series:
+    """Carry ended inside the penalty area (StatsBomb 120×80)."""
+    if passes.empty:
+        return pd.Series(dtype=bool)
+    return (
+        passes["has_end"].fillna(False).astype(bool)
+        & (passes["x_end"] >= PENALTY_BOX_X_MIN)
+        & (passes["y_end"] >= PENALTY_BOX_Y_MIN)
+        & (passes["y_end"] <= PENALTY_BOX_Y_MAX)
+    )
+
+
 def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     if passes.empty:
         return {}
@@ -838,9 +848,7 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     ) if len(xt) else 0.0
 
     progressive_passes = int(passes["prog_success"].sum())
-    carries_to_box = int(
-        (passes["has_end"] & (passes["x_end"] >= XT_V4_BOX_X_START) & passes["is_success"]).sum()
-    )
+    carries_to_box = int(_ended_in_penalty_box(passes).sum())
 
     return {
         "passes_total": total,
@@ -875,7 +883,9 @@ def _dribble_stats(actions: pd.DataFrame) -> dict:
     dribbles = actions[actions["is_dribble"]] if "is_dribble" in actions.columns else actions.iloc[0:0]
     total = int(len(dribbles))
     success = int(dribbles["is_success"].sum()) if total else 0
-    in_final_third = int((dribbles["x_start"] >= FINAL_THIRD_LINE_X).sum()) if total else 0
+    in_final_third = int(
+        (dribbles["is_success"] & (dribbles["x_start"] >= FINAL_THIRD_LINE_X)).sum()
+    ) if total else 0
     return {
         "dribbles_total": total,
         "dribbles_success": success,
