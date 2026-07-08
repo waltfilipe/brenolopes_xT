@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 24
+DATA_CACHE_VERSION = 25
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -53,9 +53,8 @@ HALF_LINE_X = FIELD_X / 2
 FINAL_THIRD_LINE_X = 80.0
 GOAL_X, GOAL_Y = 120.0, 40.0
 WYSCOUT_PITCH_SIZE = 100.0
-PASS_AGGRESSION_X_MIN = FIELD_X - 30.0
-LONG_PASS_MIN_DISTANCE_M = 30.0
 DXT_IMPACT_THRESHOLD = 0.1
+DXT_GT_PCT_THRESHOLD = 0.15
 DEFAULT_PLAYER_POSITION = "CM"
 
 WYSCOUT_PROG_OWN_HALF = 30.0
@@ -124,15 +123,11 @@ XT_V5_MAX_DELTA_ATT, XT_V5_MAX_DELTA_BOX = 0.42, 0.52
 XT_V4_BOX_X_START = 90.0
 
 RANKING_METRIC_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("All-around pass efficiency and impact", (
-        "impact_passes_p90", "impact_per_pass",
-        "phi_p90", "phi_per_pass",
+    ("Volume & impact rate (p90)", (
+        "impact_passes_p90", "phi_p90", "dxt_p90",
     )),
-    ("How much impact", ("dxt_p90", "dxt_per_pass")),
-    ("How often impact", ("dxt_gt_01_pct",)),
-    ("Construction & aggression efficiency", (
-        "construction_aip", "construction_aip_per_pass",
-        "aggression_aip", "aggression_aip_per_pass",
+    ("Efficiency per carry", (
+        "impact_per_pass", "dxt_per_pass", "dxt_gt_015_pct",
     )),
 )
 
@@ -142,22 +137,15 @@ RATING_METRIC_KEYS: tuple[str, ...] = tuple(
 
 METRIC_LABELS: dict[str, str] = {
     "impact_passes_p90": "Conduções Impact p90",
-    "impact_per_pass": "Conduções Impact / Condução",
-    "phi_p90": "PHI p90",
-    "phi_per_pass": "PHI / Condução",
-    "dxt_p90": "ΔxT p90",
-    "dxt_per_pass": "ΔxT / Condução",
-    "dxt_gt_01_pct": "% conduções ΔxT > 0.1",
-    "construction_aip": "Construction AIP",
-    "construction_aip_per_pass": "Construction AIP / Conduções def.",
-    "aggression_aip": "Aggression AIP",
-    "aggression_aip_per_pass": "Aggression AIP / Conduções of.",
-    "progressive_passes_p90": "Conduções Progressivas p90",
-    "progressive_passes": "Conduções Progressivas",
-    "final_third_passes_p90": "Conduções ao Terço Final p90",
-    "final_third_passes": "Conduções ao Terço Final",
-    "key_passes": "Key Passes",
-    "long_balls": "Conduções Longas",
+    "impact_per_pass": "Cond. Impact / Condução",
+    "phi_p90": "CHI p90",
+    "dxt_p90": "DeltaxT p90",
+    "dxt_per_pass": "deltaxT / Condução",
+    "dxt_gt_015_pct": "%Conduções deltaxT > 0.15",
+    "carries_to_box": "Conduções para área",
+    "carries_to_box_p90": "Conduções para área p90",
+    "dribbles_final_third": "Dribles no Terço Final",
+    "dribbles_final_third_p90": "Dribles no Terço Final p90",
     "carries_total": "Conduções",
     "dribbles_total": "Dribles",
     "dribble_success_pct": "% Dribles Certos",
@@ -173,39 +161,33 @@ ABSOLUTE_METRIC_KEYS: tuple[str, ...] = (
 
 RELATIVE_METRIC_KEYS: tuple[str, ...] = (
     "impact_per_pass",
-    "phi_per_pass",
     "dxt_per_pass",
-    "dxt_gt_01_pct",
+    "dxt_gt_015_pct",
 )
 
-CONSTRUCTION_METRIC_KEYS: tuple[str, ...] = (
-    "construction_aip",
-    "construction_aip_per_pass",
+AREA_METRIC_KEYS: tuple[str, ...] = (
+    "carries_to_box",
+    "carries_to_box_p90",
 )
 
-AGGRESSION_METRIC_KEYS: tuple[str, ...] = (
-    "aggression_aip",
-    "aggression_aip_per_pass",
-)
-
-LONG_BALL_STAT_KEYS: tuple[str, ...] = (
-    "long_impact_passes",
-    "long_impact_per_long_pass",
+FINAL_THIRD_DRIBBLE_METRIC_KEYS: tuple[str, ...] = (
+    "dribbles_final_third",
+    "dribbles_final_third_p90",
 )
 
 SECTION_RATING_GROUPS: dict[str, tuple[str, ...]] = {
     "metrics_absolute": ABSOLUTE_METRIC_KEYS,
     "metrics_relative": RELATIVE_METRIC_KEYS,
-    "long_balls": LONG_BALL_STAT_KEYS,
-    "construction": CONSTRUCTION_METRIC_KEYS,
-    "aggression": AGGRESSION_METRIC_KEYS,
+    "carries_to_area": AREA_METRIC_KEYS,
+    "final_third_dribbles": FINAL_THIRD_DRIBBLE_METRIC_KEYS,
 }
 
 RANK_DISPLAY_KEYS: tuple[str, ...] = (
     *TOOLTIP_EXTRA_KEYS,
     "minutes_pct",
-    *LONG_BALL_STAT_KEYS,
     *RATING_METRIC_KEYS,
+    *AREA_METRIC_KEYS,
+    *FINAL_THIRD_DRIBBLE_METRIC_KEYS,
 )
 
 TOOLTIP_LABELS: dict[str, str] = {
@@ -215,8 +197,6 @@ TOOLTIP_LABELS: dict[str, str] = {
     "minutes_pct": "Min %",
     "impact_passes": "Conduções Impact",
     "high_impact_passes": "Conduções High Impact",
-    "long_impact_passes": "Conduções longas impact",
-    "long_impact_per_long_pass": "Impact / condução longa",
 }
 
 
@@ -716,8 +696,6 @@ def _enrich_passes(
         np.sqrt((out["x_end"] - out["x_start"]) ** 2 + (out["y_end"] - out["y_start"]) ** 2),
         0.0,
     )
-    out["is_long_ball"] = out["has_end"] & (out["pass_distance"] >= LONG_PASS_MIN_DISTANCE_M)
-
     mask = out["has_end"].to_numpy()
     if mask.any():
         sub = out.loc[mask]
@@ -846,23 +824,6 @@ def _per90(total: float, minutes: float | None) -> float:
     return round(float(total) * 90.0 / float(minutes), 3) if minutes else 0.0
 
 
-def _zone_metrics(passes: pd.DataFrame, construction: bool) -> dict:
-    if construction:
-        mask = passes["has_end"] & (passes["x_end"] < PASS_AGGRESSION_X_MIN)
-    else:
-        mask = passes["has_end"] & (passes["x_end"] >= PASS_AGGRESSION_X_MIN)
-    zone = passes[mask]
-    completed = zone[zone["is_success"]]
-    return {
-        "passes": int(len(completed)),
-        "progressive_passes": int(zone["prog_success"].sum()),
-        "impact_passes": int(zone["impact_success"].sum()),
-        "high_impact_passes": int(zone["high_impact_success"].sum()),
-        "sum_dxt": float(zone["delta_xt_v4"].sum()),
-        "sum_xt_end": float(completed["xt_end_v4"].sum()) if not completed.empty else 0.0,
-    }
-
-
 def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     if passes.empty:
         return {}
@@ -872,17 +833,14 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     impact = _accuracy(passes["impact_attempt"], passes["impact_success"])
     high = _accuracy(passes["high_impact_attempt"], passes["high_impact_success"])
 
-    dxt_gt_01_pct = float((xt["delta_xt_v4"] > DXT_IMPACT_THRESHOLD).mean() * 100.0) if len(xt) else 0.0
+    dxt_gt_015_pct = float(
+        (xt["delta_xt_v4"] > DXT_GT_PCT_THRESHOLD).mean() * 100.0
+    ) if len(xt) else 0.0
 
-    construction = _zone_metrics(passes, True)
-    aggression = _zone_metrics(passes, False)
-    construction_aip = construction["impact_passes"] + construction["high_impact_passes"]
-    aggression_aip = aggression["impact_passes"] + aggression["high_impact_passes"]
     progressive_passes = int(passes["prog_success"].sum())
-    final_third_passes = int(
-        (passes["has_end"] & (passes["x_end"] >= FINAL_THIRD_LINE_X) & passes["is_success"]).sum()
+    carries_to_box = int(
+        (passes["has_end"] & (passes["x_end"] >= XT_V4_BOX_X_START) & passes["is_success"]).sum()
     )
-    key_passes = int((passes["is_success"] & passes["is_key_pass"]).sum())
 
     return {
         "passes_total": total,
@@ -895,19 +853,11 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
         "high_impact_accuracy_pct": high["accuracy_pct"],
         "sum_dxt_passes": float(passes["delta_xt_v4"].sum()),
         "sum_xt_end_passes": float(completed["xt_end_v4"].sum()) if not completed.empty else 0.0,
-        "dxt_gt_01_pct": round(dxt_gt_01_pct, 1),
+        "dxt_gt_015_pct": round(dxt_gt_015_pct, 1),
         "impact_per_pass": _safe_ratio(impact["successful"], total),
-        "phi_per_pass": _safe_ratio(high["successful"], total),
         "dxt_per_pass": _safe_ratio(float(passes["delta_xt_v4"].sum()), int(len(completed))),
-        "construction_aip": int(construction_aip),
-        "construction_aip_per_pass": _safe_ratio(construction_aip, construction["passes"]),
-        "aggression_aip": int(aggression_aip),
-        "aggression_aip_per_pass": _safe_ratio(aggression_aip, aggression["passes"]),
-        "construction_passes": construction["passes"],
-        "aggression_passes": aggression["passes"],
+        "carries_to_box": carries_to_box,
         "progressive_passes": progressive_passes,
-        "final_third_passes": final_third_passes,
-        "key_passes": key_passes,
     }
 
 
@@ -916,60 +866,27 @@ def _derive_rates(stats: dict, minutes: float | None) -> dict:
     out["impact_passes_p90"] = _per90(stats.get("impact_passes", 0), minutes)
     out["phi_p90"] = _per90(stats.get("high_impact_passes", 0), minutes)
     out["dxt_p90"] = _per90(stats.get("sum_dxt_passes", 0), minutes)
-    out["progressive_passes_p90"] = _per90(stats.get("progressive_passes", 0), minutes)
-    out["final_third_passes_p90"] = _per90(stats.get("final_third_passes", 0), minutes)
+    out["carries_to_box_p90"] = _per90(stats.get("carries_to_box", 0), minutes)
+    out["dribbles_final_third_p90"] = _per90(stats.get("dribbles_final_third", 0), minutes)
     return out
-
-
-def _long_pass_mask(passes: pd.DataFrame) -> pd.Series:
-    """Passes com destino e distância >= 30 m (StatsBomb, metros)."""
-    if passes.empty:
-        return pd.Series(dtype=bool)
-    has_end = passes["has_end"].fillna(False).astype(bool)
-    dist = np.sqrt(
-        (passes["x_end"].to_numpy(dtype=float) - passes["x_start"].to_numpy(dtype=float)) ** 2
-        + (passes["y_end"].to_numpy(dtype=float) - passes["y_start"].to_numpy(dtype=float)) ** 2
-    )
-    return has_end & (dist >= LONG_PASS_MIN_DISTANCE_M)
-
-
-def _long_ball_stats(passes: pd.DataFrame) -> dict:
-    mask = _long_pass_mask(passes)
-    long_passes = passes[mask]
-    n_long = int(mask.sum())
-    if n_long == 0:
-        return {
-            "long_balls": 0,
-            "long_balls_completed": 0,
-            "long_impact_passes": 0,
-            "long_impact_eff_pct": 0.0,
-            "long_impact_per_long_pass": 0.0,
-        }
-    layer = _pass_layer_metrics(long_passes)
-    n_impact = int(layer.get("impact_passes", 0))
-    return {
-        "long_balls": n_long,
-        "long_balls_completed": int(long_passes["is_success"].sum()),
-        "long_impact_passes": n_impact,
-        "long_impact_eff_pct": float(layer.get("impact_accuracy_pct", 0.0)),
-        "long_impact_per_long_pass": _safe_ratio(n_impact, n_long),
-    }
 
 
 def _dribble_stats(actions: pd.DataFrame) -> dict:
     dribbles = actions[actions["is_dribble"]] if "is_dribble" in actions.columns else actions.iloc[0:0]
     total = int(len(dribbles))
     success = int(dribbles["is_success"].sum()) if total else 0
+    in_final_third = int((dribbles["x_start"] >= FINAL_THIRD_LINE_X).sum()) if total else 0
     return {
         "dribbles_total": total,
         "dribbles_success": success,
         "dribble_success_pct": round(success / total * 100.0, 1) if total else 0.0,
+        "dribbles_final_third": in_final_third,
     }
 
 
 def compute_player_metrics(passes: pd.DataFrame, minutes_info: dict) -> dict:
     carries = passes[~passes["is_dribble"]] if "is_dribble" in passes.columns else passes
-    stats = {**_pass_layer_metrics(carries), **_long_ball_stats(carries), **_dribble_stats(passes)}
+    stats = {**_pass_layer_metrics(carries), **_dribble_stats(passes)}
     stats["carries_total"] = int(len(carries))
     stats["passes_completed"] = stats["carries_total"]
     minutes = minutes_info.get("minutes")
@@ -1469,21 +1386,15 @@ def fmt_stat_value(key: str, value) -> str:
         return "—"
     fixed_decimals = {
         "impact_per_pass": 2,
-        "phi_per_pass": 3,
         "dxt_per_pass": 3,
-        "long_impact_per_long_pass": 2,
-        "construction_aip_per_pass": 3,
-        "aggression_aip_per_pass": 3,
     }
     if key in fixed_decimals:
         return f"{float(value):.{fixed_decimals[key]}f}"
     if key.endswith("_pct"):
         return f"{fmt_smart(value)}%"
     if key in {
-        "minutes", "passes_completed", "long_balls", "long_balls_completed",
-        "long_impact_passes", "impact_passes", "high_impact_passes",
-        "construction_aip", "aggression_aip", "construction_passes", "aggression_passes",
-        "dribbles_total", "dribbles_success", "carries_total",
+        "minutes", "passes_completed", "impact_passes", "high_impact_passes",
+        "carries_total", "carries_to_box", "dribbles_total", "dribbles_final_third",
     }:
         return fmt_smart(value, max_decimals=1) if float(value) == int(float(value)) else fmt_smart(value)
     if "per_" in key or key.endswith("_p90"):

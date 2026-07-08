@@ -22,11 +22,10 @@ from carries_maps import draw_dribble_map, draw_impact_pass_map, draw_pass_desti
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
 IMPACT_MODEL_LABELS = ce.IMPACT_MODEL_LABELS
-LONG_BALL_STAT_KEYS = ce.LONG_BALL_STAT_KEYS
 ABSOLUTE_METRIC_KEYS = ce.ABSOLUTE_METRIC_KEYS
 RELATIVE_METRIC_KEYS = ce.RELATIVE_METRIC_KEYS
-CONSTRUCTION_METRIC_KEYS = ce.CONSTRUCTION_METRIC_KEYS
-AGGRESSION_METRIC_KEYS = ce.AGGRESSION_METRIC_KEYS
+AREA_METRIC_KEYS = ce.AREA_METRIC_KEYS
+FINAL_THIRD_DRIBBLE_METRIC_KEYS = ce.FINAL_THIRD_DRIBBLE_METRIC_KEYS
 POSITION_GROUPS_ORDER = ce.POSITION_GROUPS_ORDER
 RATING_TOP_N = ce.RATING_TOP_N
 RATING_MIN_MINUTES_PCT = ce.RATING_MIN_MINUTES_PCT
@@ -547,12 +546,11 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         ("Métricas Absolutas", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
         ("Métricas Relativas", "metrics_relative", RELATIVE_METRIC_KEYS, True),
     ]
-    long_ball_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Conduções longas", "long_balls", LONG_BALL_STAT_KEYS, True),
+    area_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
+        ("Conduções para área", "carries_to_area", AREA_METRIC_KEYS, True),
     ]
-    style_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Construção", "construction", CONSTRUCTION_METRIC_KEYS, True),
-        ("Agressão", "aggression", AGGRESSION_METRIC_KEYS, True),
+    dribble_zone_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
+        ("Dribles no Terço Final", "final_third_dribbles", FINAL_THIRD_DRIBBLE_METRIC_KEYS, True),
     ]
 
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
@@ -565,15 +563,15 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         + "</div>"
     )
 
-    col_general, col_metrics, col_long, col_style = st.columns(4, gap="small")
+    col_general, col_metrics, col_area, col_dribbles = st.columns(4, gap="small")
     with col_general:
         st.markdown(general_card, unsafe_allow_html=True)
     with col_metrics:
         st.markdown(_player_card_html(player, abs_rel_sections), unsafe_allow_html=True)
-    with col_long:
-        st.markdown(_player_card_html(player, long_ball_sections), unsafe_allow_html=True)
-    with col_style:
-        st.markdown(_player_card_html(player, style_sections), unsafe_allow_html=True)
+    with col_area:
+        st.markdown(_player_card_html(player, area_sections), unsafe_allow_html=True)
+    with col_dribbles:
+        st.markdown(_player_card_html(player, dribble_zone_sections), unsafe_allow_html=True)
 
 
 def render_map_section(
