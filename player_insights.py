@@ -39,7 +39,22 @@ def rating_display_score(pass_rating: float | None) -> float | None:
     return float(pass_rating) * 10.0
 
 
-def rating_band_text(display_score: float | None) -> str:
+def rating_band_text(
+    display_score: float | None,
+    *,
+    rank: int | None = None,
+    total: int | None = None,
+) -> str:
+    """Label aligned with position in the peer group (rank), not raw score alone."""
+    if rank is not None and total is not None and total > 1:
+        t = (rank - 1) / (total - 1)
+        if t <= 0.10:
+            return "Elite no Brasileirão"
+        if t <= 0.45:
+            return "Acima da média"
+        if t <= 0.72:
+            return "Na média do campeonato"
+        return "Abaixo da média"
     if display_score is None:
         return "Sem nota"
     if display_score >= 8.0:
@@ -158,9 +173,12 @@ def build_player_insights(player: dict, metric_ranks: dict, *, max_items: int = 
 def build_headline_summary(player: dict, metric_ranks: dict) -> dict[str, str]:
     display = rating_display_score(player.get("pass_rating"))
     display_txt = f"{display:.1f}/10" if display is not None else "—"
+    rank_info = metric_ranks.get("pass_rating")
+    rank = int(rank_info["rank"]) if rank_info else None
+    total = int(rank_info["total"]) if rank_info else None
     return {
         "score": display_txt,
-        "band": rating_band_text(display),
+        "band": rating_band_text(display, rank=rank, total=total),
         "rank_line": build_rank_line(player, metric_ranks),
         "profile": build_profile_line(player, metric_ranks),
     }

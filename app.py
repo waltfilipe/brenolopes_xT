@@ -254,7 +254,10 @@ st.caption("Leitura simplificada de conduções e dribles. Passe o mouse nos nom
 
 GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
     ("Nota geral", "Média das notas por métrica no grupo de posição (1º = 9,0 · mediano = 6,0 · último = 3,0)."),
-    ("Elite no Brasileirão", "Nota 8,0 ou acima — entre os melhores da posição."),
+    ("Elite no Brasileirão", "Top ~10% do grupo de posição."),
+    ("Acima da média", "Melhor que a metade do grupo — até o top ~10% abaixo da elite."),
+    ("Na média do campeonato", "Faixa intermediária do grupo de posição."),
+    ("Abaixo da média", "Parte inferior do grupo de posição."),
     ("Condução que muda o jogo", "Avanço relevante com a bola nos pés, medido por modelo de campo (xT)."),
     ("Por jogo", "Valor ajustado por 90 minutos — facilita comparar quem jogou mais ou menos."),
     ("Chegada à área", "Condução que termina dentro da grande área adversária."),
