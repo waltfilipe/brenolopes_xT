@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 26
+DATA_CACHE_VERSION = 27
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -145,9 +145,8 @@ METRIC_LABELS: dict[str, str] = {
     "dxt_p90": "DeltaxT p90",
     "dxt_per_pass": "deltaxT / Condução",
     "dxt_gt_015_pct": "%Conduções deltaxT > 0.15",
-    "carries_to_box": "Conduções para área",
     "carries_to_box_p90": "Conduções para área p90",
-    "dribbles_final_third": "Dribles Certos no Terço Final",
+    "carries_impact_to_box_p90": "Conduções de Impacto para área p90",
     "dribbles_final_third_p90": "Dribles Certos no Terço Final p90",
     "carries_total": "Conduções",
     "dribbles_total": "Dribles",
@@ -169,9 +168,8 @@ RELATIVE_METRIC_KEYS: tuple[str, ...] = (
 )
 
 GENERAL_CARRIES_DRIBBLES_METRIC_KEYS: tuple[str, ...] = (
-    "carries_to_box",
     "carries_to_box_p90",
-    "dribbles_final_third",
+    "carries_impact_to_box_p90",
     "dribbles_final_third_p90",
 )
 
@@ -848,7 +846,9 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     ) if len(xt) else 0.0
 
     progressive_passes = int(passes["prog_success"].sum())
-    carries_to_box = int(_ended_in_penalty_box(passes).sum())
+    box_mask = _ended_in_penalty_box(passes)
+    carries_to_box = int(box_mask.sum())
+    carries_impact_to_box = int((box_mask & passes["impact_success"]).sum())
 
     return {
         "passes_total": total,
@@ -865,6 +865,7 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
         "impact_per_pass": _safe_ratio(impact["successful"], total),
         "dxt_per_pass": _safe_ratio(float(passes["delta_xt_v4"].sum()), int(len(completed))),
         "carries_to_box": carries_to_box,
+        "carries_impact_to_box": carries_impact_to_box,
         "progressive_passes": progressive_passes,
     }
 
@@ -875,6 +876,7 @@ def _derive_rates(stats: dict, minutes: float | None) -> dict:
     out["phi_p90"] = _per90(stats.get("high_impact_passes", 0), minutes)
     out["dxt_p90"] = _per90(stats.get("sum_dxt_passes", 0), minutes)
     out["carries_to_box_p90"] = _per90(stats.get("carries_to_box", 0), minutes)
+    out["carries_impact_to_box_p90"] = _per90(stats.get("carries_impact_to_box", 0), minutes)
     out["dribbles_final_third_p90"] = _per90(stats.get("dribbles_final_third", 0), minutes)
     return out
 
@@ -884,7 +886,10 @@ def _dribble_stats(actions: pd.DataFrame) -> dict:
     total = int(len(dribbles))
     success = int(dribbles["is_success"].sum()) if total else 0
     in_final_third = int(
-        (dribbles["is_success"] & (dribbles["x_start"] >= FINAL_THIRD_LINE_X)).sum()
+        (
+            dribbles["is_success"].fillna(False).astype(bool)
+            & (dribbles["x_start"] >= FINAL_THIRD_LINE_X)
+        ).sum()
     ) if total else 0
     return {
         "dribbles_total": total,
@@ -1397,6 +1402,7 @@ def fmt_stat_value(key: str, value) -> str:
     fixed_decimals = {
         "impact_per_pass": 2,
         "dxt_per_pass": 3,
+        "dribbles_final_third_p90": 1,
     }
     if key in fixed_decimals:
         return f"{float(value):.{fixed_decimals[key]}f}"
@@ -1404,7 +1410,7 @@ def fmt_stat_value(key: str, value) -> str:
         return f"{fmt_smart(value)}%"
     if key in {
         "minutes", "passes_completed", "impact_passes", "high_impact_passes",
-        "carries_total", "carries_to_box", "dribbles_total", "dribbles_final_third",
+        "carries_total", "dribbles_total",
     }:
         return fmt_smart(value, max_decimals=1) if float(value) == int(float(value)) else fmt_smart(value)
     if "per_" in key or key.endswith("_p90"):
