@@ -472,15 +472,32 @@ def _metric_line_html(
 ) -> str:
     label_html = _label_html(key) if use_tooltip_label else html.escape(label)
     rank_sub = ""
+    badge = ""
     if show_rank:
+        info = metric_ranks.get(key)
+        if info:
+            rank = int(info["rank"])
+            total = int(info["total"])
+            color = rank_color(rank, total)
+            badge = (
+                f'<span class="rank-tip">'
+                f'<span class="rank-badge" style="background:{color}"></span>'
+                f'<span class="rank-tipbox">{rank}/{total}</span>'
+                f"</span>"
+            )
         sub = _metric_rank_subline(player, metric_ranks, key)
         if sub:
             rank_sub = f'<div class="metric-rank-sub">{html.escape(sub)}</div>'
     label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
+    value_html = (
+        f'<span class="val-wrap">{badge}<span class="stat-val">{html.escape(value)}</span></span>'
+        if badge
+        else f'<span class="stat-val">{html.escape(value)}</span>'
+    )
     return (
         '<div class="metric-line">'
         f"{label_block}"
-        f'<span class="stat-val">{html.escape(value)}</span>'
+        f"{value_html}"
         "</div>"
     )
 
