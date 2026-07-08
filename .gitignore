@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.Python
+.venv/
+venv/
+data/sofascore/
+teste_carries/
