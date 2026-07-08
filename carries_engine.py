@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 27
+DATA_CACHE_VERSION = 28
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -139,18 +139,38 @@ RATING_METRIC_KEYS: tuple[str, ...] = tuple(
 )
 
 METRIC_LABELS: dict[str, str] = {
-    "impact_passes_p90": "Conduções Impact p90",
-    "impact_per_pass": "Cond. Impact / Condução",
-    "phi_p90": "CHI p90",
-    "dxt_p90": "DeltaxT p90",
-    "dxt_per_pass": "deltaxT / Condução",
-    "dxt_gt_015_pct": "%Conduções deltaxT > 0.15",
-    "carries_to_box_p90": "Conduções para área p90",
-    "carries_impact_to_box_p90": "Conduções de Impacto para área p90",
-    "dribbles_final_third_p90": "Dribles Certos no Terço Final p90",
-    "carries_total": "Conduções",
-    "dribbles_total": "Dribles",
-    "dribble_success_pct": "% Dribles Certos",
+    "impact_passes_p90": "Conduções que mudam o jogo (por jogo)",
+    "impact_per_pass": "Conduções produtivas (%)",
+    "phi_p90": "Conduções decisivas (por jogo)",
+    "dxt_p90": "Progressão com a bola (por jogo)",
+    "dxt_per_pass": "Avanço médio por condução",
+    "dxt_gt_015_pct": "Conduções de alto avanço",
+    "carries_to_box_p90": "Chegadas à área com a bola (por jogo)",
+    "carries_impact_to_box_p90": "Chegadas de impacto à área (por jogo)",
+    "dribbles_final_third_p90": "Dribles certos no ataque (por jogo)",
+    "carries_total": "Conduções totais",
+    "dribbles_total": "Dribles tentados",
+    "dribble_success_pct": "Taxa de acerto nos dribles",
+}
+
+METRIC_TOOLTIPS: dict[str, str] = {
+    "impact_passes_p90": "Média por jogo de conduções que avançam o time de forma relevante.",
+    "impact_per_pass": "Proporção de conduções classificadas como produtivas.",
+    "phi_p90": "Conduções de impacto máximo — as que mais abrem o jogo.",
+    "dxt_p90": "Quanto o jogador melhora a posição ofensiva do time ao conduzir, por jogo.",
+    "dxt_per_pass": "Ganho médio de campo a cada condução completada.",
+    "dxt_gt_015_pct": "Percentual de conduções com avanço claro em direção ao gol.",
+    "carries_to_box_p90": "Conduções que terminam dentro da grande área, por jogo.",
+    "carries_impact_to_box_p90": "Chegadas à área classificadas como conduções de impacto.",
+    "dribbles_final_third_p90": "1v1 vencidos no terço final ofensivo, por jogo.",
+    "carries_total": "Total de conduções com bola nos pés na temporada.",
+    "dribbles_total": "Total de tentativas de drible registradas.",
+    "dribble_success_pct": "Percentual de dribles concluídos com sucesso.",
+    "minutes": "Minutos totais em campo na amostra.",
+    "minutes_pct": "Percentual de jogos disputados pelo time em que entrou.",
+    "impact_passes": "Conduções que mudam o jogo na temporada.",
+    "high_impact_passes": "Conduções decisivas na temporada.",
+    "passes_completed": "Total de conduções completadas.",
 }
 
 TOOLTIP_EXTRA_KEYS: tuple[str, ...] = ("minutes", "passes_completed")
@@ -188,12 +208,16 @@ RANK_DISPLAY_KEYS: tuple[str, ...] = (
 
 TOOLTIP_LABELS: dict[str, str] = {
     **METRIC_LABELS,
-    "minutes": "Minutos",
-    "passes_completed": "Conduções",
-    "minutes_pct": "Min %",
-    "impact_passes": "Conduções Impact",
-    "high_impact_passes": "Conduções High Impact",
+    "minutes": "Minutos em campo",
+    "passes_completed": "Conduções totais",
+    "minutes_pct": "Participação nos jogos",
+    "impact_passes": "Conduções que mudam o jogo",
+    "high_impact_passes": "Conduções decisivas",
 }
+
+
+def metric_tooltip(key: str) -> str:
+    return METRIC_TOOLTIPS.get(key, "")
 
 
 # ── Math helpers ──────────────────────────────────────────────────────────────
@@ -1400,10 +1424,11 @@ def fmt_stat_value(key: str, value) -> str:
     if value is None:
         return "—"
     fixed_decimals = {
-        "impact_per_pass": 2,
         "dxt_per_pass": 3,
         "dribbles_final_third_p90": 1,
     }
+    if key == "impact_per_pass":
+        return f"{float(value) * 100.0:.1f}%"
     if key in fixed_decimals:
         return f"{float(value):.{fixed_decimals[key]}f}"
     if key.endswith("_pct"):

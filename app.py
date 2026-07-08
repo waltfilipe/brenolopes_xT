@@ -1,4 +1,4 @@
-"""Carries xTh — conduções e dribles com mapas de impacto (Série A)."""
+"""Condução & Drible — dashboard Brasileirão Série A."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 
 import carries_engine as ce
 from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map
+from player_insights import build_headline_summary, build_player_insights
 
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
@@ -37,6 +38,7 @@ fmt_stat_value = ce.fmt_stat_value
 load_passes_grouped = ce.load_passes_grouped
 load_dribbles_grouped = ce.load_dribbles_grouped
 metric_label = ce.metric_label
+metric_tooltip = ce.metric_tooltip
 rank_to_display_score = ce.rank_to_display_score
 score_display_color = ce.score_display_color
 rate_player_vs_eligible_pool = ce.rate_player_vs_eligible_pool
@@ -48,7 +50,7 @@ def fmt_rating_score(pass_rating) -> str:
     return f"{float(pass_rating) * 10.0:.1f}"
 
 
-st.set_page_config(page_title="Carries xTh", layout="wide")
+st.set_page_config(page_title="Condução & Drible", layout="wide")
 
 st.markdown(
     """
@@ -102,6 +104,58 @@ st.markdown(
         filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.35));
     }
     .player-card h3 { margin: 0 0 0.15rem 0; color: #f1f5f9; font-size: 1.15rem; }
+    .headline-block { margin: 0.55rem 0 0.65rem 0; }
+    .headline-top {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 0.25rem;
+    }
+    .headline-score {
+        color: #f8fafc;
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+    .headline-band {
+        color: #93c5fd;
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+    .headline-rank {
+        color: #cbd5e1;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+    }
+    .headline-profile {
+        color: #e2e8f0;
+        font-size: 0.86rem;
+        font-style: italic;
+        line-height: 1.35;
+        margin-bottom: 0.55rem;
+    }
+    .insights-list {
+        list-style: none;
+        margin: 0 0 0.65rem 0;
+        padding: 0;
+    }
+    .insights-list li {
+        font-size: 0.82rem;
+        line-height: 1.4;
+        padding: 0.28rem 0;
+        border-bottom: 1px solid #1f293f;
+        color: #cbd5e1;
+    }
+    .insights-list li:last-child { border-bottom: none; }
+    .insight-strong { color: #86efac; }
+    .insight-develop { color: #fcd34d; }
+    .metric-tip {
+        position: relative;
+        display: inline-flex;
+        cursor: help;
+        border-bottom: 1px dotted #64748b;
+    }
+    .metric-tip:hover .rank-tipbox { display: block; }
     .player-card .sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 0; }
     .player-card .rating-box {
         display: inline-flex;
@@ -204,7 +258,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Carries xTh — Brasileirão Série A")
+st.title("Condução & Drible — Brasileirão Série A")
+st.caption("Leitura simplificada de conduções e dribles. Passe o mouse nos nomes das métricas para ver o que significam.")
+
+GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
+    ("Nota geral", "Média das notas por métrica no grupo de posição (1º = 9,0 · mediano = 6,0 · último = 3,0)."),
+    ("Elite no Brasileirão", "Nota 8,0 ou acima — entre os melhores da posição."),
+    ("Condução que muda o jogo", "Avanço relevante com a bola nos pés, medido por modelo de campo (xT)."),
+    ("Por jogo", "Valor ajustado por 90 minutos — facilita comparar quem jogou mais ou menos."),
+    ("Chegada à área", "Condução que termina dentro da grande área adversária."),
+    ("Drible certo no ataque", "1v1 vencido no terço final ofensivo."),
+)
 
 RATING_COLUMNS = ["Jogador", "Time", "Rating"]
 SELECTBOX_KEY = "map_player_select"
@@ -368,6 +432,37 @@ def _badge_text_color(hex_color: str) -> str:
     return "#1e293b" if lum > 168 else "#f8fafc"
 
 
+def _label_html(key: str) -> str:
+    label = metric_label(key)
+    tip = metric_tooltip(key)
+    if not tip:
+        return html.escape(label)
+    return (
+        f'<span class="metric-tip">{html.escape(label)}'
+        f'<span class="rank-tipbox">{html.escape(tip)}</span></span>'
+    )
+
+
+def _headline_html(player: dict, metric_ranks: dict) -> str:
+    summary = build_headline_summary(player, metric_ranks)
+    insights = build_player_insights(player, metric_ranks)
+    insight_items = []
+    for kind, text in insights:
+        css = "insight-strong" if kind == "strong" else "insight-develop" if kind == "develop" else ""
+        insight_items.append(f'<li class="{css}">{html.escape(text)}</li>')
+    return (
+        '<div class="headline-block">'
+        f'<div class="headline-top">'
+        f'<span class="headline-score">{html.escape(summary["score"])}</span>'
+        f'<span class="headline-band">{html.escape(summary["band"])}</span>'
+        f"</div>"
+        f'<div class="headline-rank">{html.escape(summary["rank_line"])}</div>'
+        f'<div class="headline-profile">{html.escape(summary["profile"])}</div>'
+        f'<ul class="insights-list">{"".join(insight_items)}</ul>'
+        "</div>"
+    )
+
+
 def _metric_line_html(
     label: str,
     key: str,
@@ -375,6 +470,7 @@ def _metric_line_html(
     metric_ranks: dict,
     *,
     show_rank: bool = True,
+    use_tooltip_label: bool = True,
 ) -> str:
     badge = ""
     if show_rank:
@@ -394,9 +490,10 @@ def _metric_line_html(
         if badge
         else f'<span class="stat-val">{html.escape(value)}</span>'
     )
+    label_html = _label_html(key) if use_tooltip_label else html.escape(label)
     return (
         '<div class="metric-line">'
-        f"<span>{html.escape(label)}</span>"
+        f"<span>{label_html}</span>"
         f"{value_html}"
         "</div>"
     )
@@ -505,6 +602,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
     col_map1, col_map2, col_map3 = st.columns(3, gap="small")
 
     with col_map1:
+        st.caption("Por onde costuma conduzir a bola")
         if carries is None or carries.empty:
             st.warning("Sem conduções para este jogador.")
         else:
@@ -512,6 +610,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
             st.pyplot(fig_all, clear_figure=True, use_container_width=True)
 
     with col_map2:
+        st.caption("Onde realmente muda o jogo ao conduzir")
         if carries is None or carries.empty:
             st.warning("Sem conduções de impacto para este jogador.")
         else:
@@ -519,6 +618,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
             st.pyplot(fig, clear_figure=True, use_container_width=True)
 
     with col_map3:
+        st.caption("Onde tenta e onde acerta o 1v1")
         if dribbles is None or dribbles.empty:
             st.info("Sem dribles com coordenadas para este jogador.")
         else:
@@ -527,7 +627,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
 
     general_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
-            "Geral",
+            "Resumo",
             None,
             (
                 "minutes",
@@ -542,14 +642,14 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         ),
     ]
     abs_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas Absolutas", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
+        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
     ]
     rel_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas Relativas", "metrics_relative", RELATIVE_METRIC_KEYS, True),
+        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, True),
     ]
     general_carry_dribble_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
-            "Métricas Gerais (Conduções e dribles)",
+            "Perigo no ataque",
             "general_carries_dribbles",
             GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
             True,
@@ -561,6 +661,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         '<div class="player-card player-info-card">'
         f"<h3>{html.escape(player['player_name'])}</h3>"
         f'<div class="sub">{html.escape(player.get("team", "—"))} · {html.escape(str(player.get("position", "—")))}</div>'
+        f"{_headline_html(player, metric_ranks)}"
         f"{_rating_header_html(player, metric_ranks)}"
         + _build_sections_html(player, metric_ranks, general_sections)
         + "</div>"
@@ -584,8 +685,8 @@ def render_map_section(
     carries_by_player: dict,
     dribbles_by_player: dict,
 ) -> None:
-    st.subheader("Mapas — conduções e dribles")
-    st.caption("Clique em um jogador na tabela de rating ou selecione abaixo.")
+    st.subheader("Mapas")
+    st.caption("Clique em um jogador na tabela ou selecione abaixo para ver conduções e dribles.")
 
     options = _player_options(all_players)
     if not options:
@@ -622,11 +723,11 @@ def render_map_section(
 
 
 def render_rating_section(rated: list[dict], *, selected_player_id: str | None) -> None:
-    st.subheader("Rating por grupo de posição")
+    st.subheader("Ranking por posição")
     st.caption(
-        "Rating = média das notas por métrica no grupo (1º = 9,0 · mediano = 6,0 · último = 3,0). "
-        f"Elegível: >{int(RATING_MIN_MINUTES_PCT * 100)}% dos minutos e ≥{int(RATING_MIN_CARRIES_PCT * 100)}% "
-        "das conduções do grupo."
+        "Nota de 3,0 a 9,0 comparando jogadores da mesma posição. "
+        f"Elegível: mais de {int(RATING_MIN_MINUTES_PCT * 100)}% dos minutos e "
+        f"pelo menos {int(RATING_MIN_CARRIES_PCT * 100)}% das conduções do grupo."
     )
     for group in POSITION_GROUPS_ORDER:
         subset = sorted(
@@ -671,7 +772,14 @@ def render_impact_model_selector() -> str:
     return impact_model
 
 
+def render_glossary() -> None:
+    with st.expander("O que significam essas métricas?"):
+        for title, body in GLOSSARY_ITEMS:
+            st.markdown(f"**{title}** — {body}")
+
+
 def main() -> None:
+    render_glossary()
     impact_model = render_impact_model_selector()
 
     with st.spinner("Carregando dados…"):

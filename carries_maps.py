@@ -79,7 +79,7 @@ def _attack_arrow(fig, *, fig_w: float) -> None:
         )
     )
     fig.text(
-        0.50, 0.012, "Attacking Direction",
+        0.50, 0.012, "Direção de ataque",
         ha="center", va="bottom", transform=fig.transFigure,
         fontsize=7.0 * scale, color="#aaaaaa",
     )
@@ -140,7 +140,7 @@ def draw_all_carries_map(
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
     ax.set_title(
-        f"{player_name}\nConduções · {match_label}",
+        f"{player_name}\nTodas as conduções · {match_label}",
         color="white", fontsize=8.4 * scale, pad=5,
     )
     _attack_arrow(fig, fig_w=fig_w)
@@ -189,14 +189,14 @@ def draw_impact_pass_map(
             )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Impact", alpha=0.80),
-        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="High Impact", alpha=0.85),
+        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Impacto", alpha=0.80),
+        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="Alto impacto", alpha=0.85),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_PROGRESSIVE,
-               markersize=4, linestyle="None", label="Origem da condução"),
+               markersize=4, linestyle="None", label="Origem"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
     ax.set_title(
-        f"{player_name}\nConduções Impact · {match_label}",
+        f"{player_name}\nConduções de impacto · {match_label}",
         color="white", fontsize=8.4 * scale, pad=5,
     )
     _attack_arrow(fig, fig_w=fig_w)
