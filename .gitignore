@@ -1,0 +1,6 @@
+data/sofascore/
+__pycache__/
+*.pyc
+.Python
+.venv/
+venv/
