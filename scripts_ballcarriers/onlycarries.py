@@ -13,7 +13,7 @@ except ImportError as exc:
     print(
         "\nERRO: dependências ou módulos locais ausentes.\n"
         "  pip install -r requirements-sofascore.txt\n"
-        "Arquivos esperados em scripts/:\n"
+        "Arquivos esperados em scripts_ballcarriers/:\n"
         "  onlycarries.py\n"
         "  fetch_sofascore_carries_dribbles.py\n"
         "  sofascore_positions.py\n",

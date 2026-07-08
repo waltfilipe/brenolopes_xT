@@ -13,7 +13,7 @@ Saída compatível com o schema de eventos do ecossistema passes_xTh / xT:
 Exemplo::
 
     pip install -r requirements-sofascore.txt
-    python -u scripts/onlycarries.py \\
+    python -u scripts_ballcarriers/onlycarries.py \\
         --url "https://www.sofascore.com/football/tournament/brazil/brasileirao-serie-a/325#id:87678" \\
         --output-dir "./carries2026" \\
         --consolidated-only \\
