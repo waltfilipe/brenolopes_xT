@@ -29,24 +29,23 @@ ARROW_HEADLENGTH = 1.15
 ARROW_ALPHA_EMPH = 0.82
 PASS_START_MARKER_SIZE = 7
 
-# Map chrome — title above pitch, attack indicator in footer strip below pitch.
-MAP_TITLE_FONT_FULL = 11.5
-MAP_TITLE_FONT_COMPACT = 10.0
-MAP_TITLE_PAD_FULL = 10
-MAP_TITLE_PAD_COMPACT = 7
-MAP_MARGIN_TOP_FULL = 0.875
-MAP_MARGIN_TOP_COMPACT = 0.895
-MAP_MARGIN_BOTTOM_FULL = 0.115
-MAP_MARGIN_BOTTOM_COMPACT = 0.105
-ATTACK_ACCENT_COLOR = "#7eb6ff"
-ATTACK_ARROW_SPAN_RATIO = 0.058
-ATTACK_FOOTER_GAP = 0.007
-ATTACK_ARROW_MUTATION_FULL = 12.0
-ATTACK_ARROW_MUTATION_COMPACT = 10.0
-ATTACK_ARROW_LW_FULL = 1.45
-ATTACK_ARROW_LW_COMPACT = 1.25
-ATTACK_LABEL_FONT_FULL = 9.0
-ATTACK_LABEL_FONT_COMPACT = 8.0
+# Map chrome — dedicated header/footer bands (figure coords), separate from pitch.
+MAP_HEADER_FRAC_FULL = 0.098
+MAP_HEADER_FRAC_COMPACT = 0.088
+MAP_FOOTER_FRAC_FULL = 0.112
+MAP_FOOTER_FRAC_COMPACT = 0.100
+MAP_TITLE_FONT_FULL = 13.5
+MAP_TITLE_FONT_COMPACT = 11.5
+ATTACK_ACCENT_COLOR = "#93c5fd"
+ATTACK_ARROW_SPAN_FIG = 0.048
+ATTACK_ARROW_Y_RATIO = 0.62
+ATTACK_LABEL_Y_RATIO = 0.24
+ATTACK_ARROW_MUTATION_FULL = 14.0
+ATTACK_ARROW_MUTATION_COMPACT = 11.5
+ATTACK_ARROW_LW_FULL = 1.55
+ATTACK_ARROW_LW_COMPACT = 1.35
+ATTACK_LABEL_FONT_FULL = 10.0
+ATTACK_LABEL_FONT_COMPACT = 8.75
 
 COLOR_CARRY = "#94a3b8"
 COLOR_PROGRESSIVE = "#7dd3fc"
@@ -87,12 +86,12 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(fig, ax, *, compact: bool) -> None:
+def _attack_arrow(fig, ax, *, compact: bool, footer_frac: float) -> None:
     pos = ax.get_position()
     center_x = pos.x0 + pos.width * 0.5
-    half_span = pos.width * ATTACK_ARROW_SPAN_RATIO
-    arrow_y = pos.y0 - ATTACK_FOOTER_GAP - 0.009
-    label_y = max(0.016, arrow_y - 0.021)
+    half_span = ATTACK_ARROW_SPAN_FIG * min(pos.width / 0.92, 1.08)
+    arrow_y = footer_frac * ATTACK_ARROW_Y_RATIO
+    label_y = footer_frac * ATTACK_LABEL_Y_RATIO
 
     mutation = ATTACK_ARROW_MUTATION_COMPACT if compact else ATTACK_ARROW_MUTATION_FULL
     lw = ATTACK_ARROW_LW_COMPACT if compact else ATTACK_ARROW_LW_FULL
@@ -107,7 +106,7 @@ def _attack_arrow(fig, ax, *, compact: bool) -> None:
             mutation_scale=mutation,
             linewidth=lw,
             color=ATTACK_ACCENT_COLOR,
-            alpha=0.92,
+            alpha=0.95,
             clip_on=False,
         )
     )
@@ -116,37 +115,41 @@ def _attack_arrow(fig, ax, *, compact: bool) -> None:
         label_y,
         "Attack direction",
         ha="center",
-        va="top",
+        va="center",
         transform=fig.transFigure,
         fontsize=label_fs,
         color=ATTACK_ACCENT_COLOR,
-        alpha=0.95,
+        alpha=0.98,
+        fontweight=500,
     )
 
 
 def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> None:
+    header_frac = MAP_HEADER_FRAC_COMPACT if compact else MAP_HEADER_FRAC_FULL
+    footer_frac = MAP_FOOTER_FRAC_COMPACT if compact else MAP_FOOTER_FRAC_FULL
     title_fs = MAP_TITLE_FONT_COMPACT if compact else MAP_TITLE_FONT_FULL
-    title_pad = MAP_TITLE_PAD_COMPACT if compact else MAP_TITLE_PAD_FULL
     if len(title) > 26:
-        title_fs -= 0.75
+        title_fs -= 1.0
 
-    ax.set_title(
-        title,
-        color="#f1f5f9",
-        fontsize=title_fs,
-        fontweight="bold",
-        pad=title_pad,
-        loc="left",
-        x=0.015,
-        y=1.0,
-    )
     fig.subplots_adjust(
         left=0.0,
         right=1.0,
-        top=MAP_MARGIN_TOP_COMPACT if compact else MAP_MARGIN_TOP_FULL,
-        bottom=MAP_MARGIN_BOTTOM_COMPACT if compact else MAP_MARGIN_BOTTOM_FULL,
+        top=1.0 - header_frac,
+        bottom=footer_frac,
     )
-    _attack_arrow(fig, ax, compact=compact)
+
+    fig.text(
+        0.018,
+        1.0 - header_frac * 0.48,
+        title,
+        transform=fig.transFigure,
+        fontsize=title_fs,
+        fontweight="bold",
+        color="#f8fafc",
+        ha="left",
+        va="center",
+    )
+    _attack_arrow(fig, ax, compact=compact, footer_frac=footer_frac)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
