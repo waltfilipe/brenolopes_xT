@@ -382,7 +382,7 @@ def _sync_player_selection(
     label_by_id: dict[str, str],
 ) -> None:
     qp = st.query_params.get("player_id")
-    if qp and qp in players_by_id:
+    if qp and qp in players_by_id and qp in label_by_id:
         st.session_state["map_player_id"] = qp
         st.session_state[SELECTBOX_KEY] = label_by_id[qp]
 
@@ -712,10 +712,10 @@ def _resolve_player(
     pool_by_position: dict[str, list[dict]],
 ) -> dict:
     resolved = dict(player)
-    if not resolved.get("eligible_for_rating"):
-        group = str(resolved.get("position_group") or "—")
-        resolved = rate_player_vs_eligible_pool(resolved, pool_by_position.get(group, []))
-    return resolved
+    if resolved.get("is_position_average") or resolved.get("eligible_for_rating"):
+        return resolved
+    group = str(resolved.get("position_group") or "—")
+    return rate_player_vs_eligible_pool(resolved, pool_by_position.get(group, []))
 
 
 def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
@@ -739,14 +739,15 @@ def render_comparison_section(
     all_players: list[dict],
     players_by_id: dict[str, dict],
     pool_by_position: dict[str, list[dict]],
+    position_averages: list[dict],
     carries_by_player: dict,
 ) -> None:
     st.subheader("Comparação lado a lado")
     st.caption(
-        "Selecione dois jogadores para comparar mapas de conduções de impacto e métricas."
+        "Selecione dois jogadores — ou a média de uma posição — para comparar mapas e métricas."
     )
 
-    options = _player_options(all_players)
+    options = _player_options(all_players, position_averages=position_averages)
     if not options:
         st.info("Nenhum jogador disponível para comparação.")
         return
@@ -778,7 +779,7 @@ def render_comparison_section(
         resolved,
         (resolved[1], resolved[0]),
     ):
-        carries = carries_by_player.get(player_id)
+        carries = _events_for_player(player, pool_by_position, carries_by_player)
         team_label = player.get("team", "—")
 
         with col:
@@ -799,14 +800,13 @@ def render_map_section(
     all_players: list[dict],
     players_by_id: dict[str, dict],
     pool_by_position: dict[str, list[dict]],
-    position_averages: list[dict],
     carries_by_player: dict,
     dribbles_by_player: dict,
 ) -> None:
     st.subheader("Mapas")
-    st.caption("Selecione um jogador ou a média da posição para ver conduções e dribles.")
+    st.caption("Selecione um jogador para ver conduções e dribles.")
 
-    options = _player_options(all_players, position_averages=position_averages)
+    options = _player_options(all_players)
     if not options:
         st.info("Nenhum jogador com conduções para o mapa.")
         return
@@ -831,11 +831,11 @@ def render_map_section(
     player_id = id_by_label[selected_label]
     st.session_state["map_player_id"] = player_id
     player = dict(players_by_id[player_id])
-    if not player.get("eligible_for_rating") and not player.get("is_position_average"):
+    if not player.get("eligible_for_rating"):
         group = str(player.get("position_group") or "—")
         player = rate_player_vs_eligible_pool(player, pool_by_position.get(group, []))
-    carries = _events_for_player(player, pool_by_position, carries_by_player)
-    dribbles = _events_for_player(player, pool_by_position, dribbles_by_player)
+    carries = carries_by_player.get(player_id)
+    dribbles = dribbles_by_player.get(player_id)
 
     render_player_layout(player, carries, dribbles)
 
@@ -885,7 +885,6 @@ def main() -> None:
             all_players,
             players_by_id,
             pool_by_position,
-            position_averages,
             carries_by_player,
             dribbles_by_player,
         )
@@ -895,6 +894,7 @@ def main() -> None:
             all_players,
             players_by_id,
             pool_by_position,
+            position_averages,
             carries_by_player,
         )
 
