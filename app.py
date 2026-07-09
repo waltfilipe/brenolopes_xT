@@ -262,19 +262,6 @@ st.markdown(
 )
 
 st.title("Ball Carry & Dribble — Brasileirão Série A")
-st.caption("Simplified carry and dribble analytics. Hover metric names for definitions.")
-
-GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
-    ("Overall rating", "Average of per-metric scores within the position group (1st = 9.0 · median = 6.0 · last = 3.0)."),
-    ("Elite in the league", "Top ~10% within the position group."),
-    ("Above average", "Better than half the group — up to just below elite."),
-    ("League average", "Middle tier within the position group."),
-    ("Below average", "Lower tier within the position group."),
-    ("Threat carry", "Meaningful progress with the ball, measured via pitch model (xT)."),
-    ("Per game", "Value adjusted per 90 minutes — easier to compare different playing time."),
-    ("Box entry", "Carry ending inside the opposition penalty area."),
-    ("Successful dribble", "1v1 won in the final third."),
-)
 
 LOCKED_DASHBOARD_PLAYER_NAME = "Breno Lopes"
 LOCKED_COMPARISON_AVG_LABEL = "Average - Wingers"
@@ -875,14 +862,7 @@ def render_impact_model_selector() -> str:
     return impact_model
 
 
-def render_glossary() -> None:
-    with st.expander("What do these metrics mean?"):
-        for title, body in GLOSSARY_ITEMS:
-            st.markdown(f"**{title}** — {body}")
-
-
 def main() -> None:
-    render_glossary()
     impact_model = render_impact_model_selector()
 
     with st.spinner("Loading data…"):

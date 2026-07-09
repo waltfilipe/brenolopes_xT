@@ -68,36 +68,57 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(fig, *, fig_w: float) -> None:
-    scale = _map_scale(fig_w)
+def _attack_arrow(fig, ax, *, compact: bool) -> None:
+    pos = ax.get_position()
+    arrow_y = pos.y0 - 0.012
+    label_y = pos.y0 - 0.034
+    center_x = pos.x0 + pos.width / 2
+    half_span = (0.045 if compact else 0.055) * min(pos.width / 0.88, 1.15)
+
     fig.patches.append(
         FancyArrowPatch(
-            (0.44, 0.055),
-            (0.56, 0.055),
+            (center_x - half_span, arrow_y),
+            (center_x + half_span, arrow_y),
             transform=fig.transFigure,
             arrowstyle="-|>",
-            mutation_scale=13 * scale,
-            linewidth=1.65 * scale,
-            color="#b0bdd0",
+            mutation_scale=12 if compact else 15,
+            linewidth=1.25 if compact else 1.55,
+            color="#9aa8bc",
+            clip_on=False,
         )
     )
     fig.text(
-        0.50,
-        0.012,
+        center_x,
+        label_y,
         "Attack direction",
         ha="center",
-        va="bottom",
+        va="top",
         transform=fig.transFigure,
-        fontsize=7.5 * scale,
-        color="#b0bdd0",
+        fontsize=7.0 if compact else 8.25,
+        color="#9aa8bc",
+        fontweight=500,
     )
 
 
-def _finish_map(fig, ax, *, fig_w: float, title: str) -> None:
-    scale = _map_scale(fig_w)
-    ax.set_title(title, color="white", fontsize=9.0 * scale, pad=8)
-    fig.subplots_adjust(left=0.02, right=0.99, top=0.90, bottom=0.14)
-    _attack_arrow(fig, fig_w=fig_w)
+def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> None:
+    title_fs = 8.25 if compact else 10.25
+    if len(title) > 24:
+        title_fs -= 0.85 if compact else 1.0
+    ax.set_title(
+        title,
+        color="#f1f5f9",
+        fontsize=title_fs,
+        fontweight=600,
+        pad=6 if compact else 10,
+        loc="center",
+    )
+    fig.subplots_adjust(
+        left=0.0,
+        right=1.0,
+        top=0.91 if compact else 0.895,
+        bottom=0.12 if compact else 0.105,
+    )
+    _attack_arrow(fig, ax, compact=compact)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
@@ -154,7 +175,7 @@ def draw_all_carries_map(
                markersize=4, linestyle="None", label="Carry origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="All carries")
+    _finish_map(fig, ax, fig_w=fig_w, title="All carries", compact=compact)
     return fig
 
 
@@ -206,7 +227,7 @@ def draw_impact_pass_map(
                markersize=4, linestyle="None", label="Origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Threat carries")
+    _finish_map(fig, ax, fig_w=fig_w, title="Threat carries", compact=compact)
     return fig
 
 
@@ -297,7 +318,7 @@ def draw_typical_impact_pass_map(
                markersize=4, linestyle="None", label="Typical origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Typical threat carry patterns")
+    _finish_map(fig, ax, fig_w=fig_w, title="Typical threat carry patterns", compact=compact)
     return fig
 
 
@@ -349,7 +370,7 @@ def draw_dribble_map(
                linestyle="None", label="Failed dribble"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Dribbles")
+    _finish_map(fig, ax, fig_w=fig_w, title="Dribbles", compact=compact)
     return fig
 
 
@@ -417,5 +438,5 @@ def draw_pass_destination_heatmap(
     cbar.ax.yaxis.set_tick_params(color="#ffffff", labelsize=6)
     plt.setp(cbar.ax.axes.get_yticklabels(), color="#ffffff")
     cbar.set_label("Threat carries", color="#c7cdda", fontsize=7 * scale)
-    _finish_map(fig, ax, fig_w=fig_w, title="Threat carry destinations")
+    _finish_map(fig, ax, fig_w=fig_w, title="Threat carry destinations", compact=compact)
     return fig
