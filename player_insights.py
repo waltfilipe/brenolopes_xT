@@ -17,7 +17,6 @@ POSITION_GROUP_LABELS: dict[str, str] = {
 
 INSIGHT_METRICS: tuple[tuple[str, str], ...] = (
     ("impact_passes_p90", "Conduções que mudam o jogo"),
-    ("impact_per_pass", "Conduções produtivas"),
     ("phi_p90", "Conduções decisivas"),
     ("dxt_p90", "Progressão com a bola"),
     ("carries_to_box_p90", "Chegadas à área"),
@@ -101,7 +100,7 @@ def build_profile_line(player: dict, metric_ranks: dict) -> str:
     parts: list[str] = []
 
     impact_rank = _metric_rank(player, metric_ranks, "impact_passes_p90")
-    quality_rank = _metric_rank(player, metric_ranks, "impact_per_pass")
+    quality_rank = _metric_rank(player, metric_ranks, "dxt_gt_015_pct")
     box_rank = _metric_rank(player, metric_ranks, "carries_to_box_p90")
     drib_rank = _metric_rank(player, metric_ranks, "dribbles_final_third_p90")
 

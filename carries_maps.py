@@ -12,11 +12,11 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import FancyArrowPatch, Rectangle
 from mplsoccer import Pitch
 
-FIG_W, FIG_H = 7.2, 4.8
-FIG_DPI = 220
+FIG_W, FIG_H = 9.6, 6.4
+FIG_DPI = 280
 FIG_W_COMPACT, FIG_H_COMPACT = 6.8, 4.5
 FIG_DPI_COMPACT = 280
-MAP_REF_WIDTH = 7.2
+MAP_REF_WIDTH = 9.6
 FIELD_X, FIELD_Y = 120.0, 80.0
 PASS_DEST_HEATMAP_COLS = 12
 PASS_DEST_HEATMAP_ROWS = 8

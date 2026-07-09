@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 28
+DATA_CACHE_VERSION = 29
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -130,7 +130,7 @@ RANKING_METRIC_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "impact_passes_p90", "phi_p90", "dxt_p90",
     )),
     ("Efficiency per carry", (
-        "impact_per_pass", "dxt_per_pass", "dxt_gt_015_pct",
+        "dxt_per_pass", "dxt_gt_015_pct",
     )),
 )
 
@@ -182,7 +182,6 @@ ABSOLUTE_METRIC_KEYS: tuple[str, ...] = (
 )
 
 RELATIVE_METRIC_KEYS: tuple[str, ...] = (
-    "impact_per_pass",
     "dxt_per_pass",
     "dxt_gt_015_pct",
 )

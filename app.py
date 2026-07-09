@@ -266,6 +266,16 @@ GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
 
 RATING_COLUMNS = ["Jogador", "Time", "Rating"]
 SELECTBOX_KEY = "map_player_select"
+COMPARISON_SELECT_KEY = "comparison_player_select"
+
+COMPARISON_METRIC_KEYS: tuple[str, ...] = (
+    "carries_total",
+    "impact_passes",
+    "high_impact_passes",
+    *ABSOLUTE_METRIC_KEYS,
+    *RELATIVE_METRIC_KEYS,
+    *GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
+)
 
 
 @st.cache_data(show_spinner=False)
@@ -684,6 +694,86 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         st.markdown(_player_card_html(player, general_carry_dribble_sections), unsafe_allow_html=True)
 
 
+def _resolve_player(
+    player: dict,
+    pool_by_position: dict[str, list[dict]],
+) -> dict:
+    resolved = dict(player)
+    if not resolved.get("eligible_for_rating"):
+        group = str(resolved.get("position_group") or "—")
+        resolved = rate_player_vs_eligible_pool(resolved, pool_by_position.get(group, []))
+    return resolved
+
+
+def _comparison_stats_card(player: dict) -> str:
+    metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
+    sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
+        ("Métricas", None, COMPARISON_METRIC_KEYS, True),
+    ]
+    header = (
+        '<div class="player-card player-info-card">'
+        f"<h3>{html.escape(player['player_name'])}</h3>"
+        f'<div class="sub">{html.escape(player.get("team", "—"))} · '
+        f"{html.escape(str(player.get("position", "—")))} · "
+        f'{html.escape(str(player.get("position_group", "—")))}</div>'
+        f"{_headline_html(player, metric_ranks)}"
+    )
+    body = _build_sections_html(player, metric_ranks, sections)
+    return header + body + "</div>"
+
+
+def render_comparison_section(
+    all_players: list[dict],
+    players_by_id: dict[str, dict],
+    pool_by_position: dict[str, list[dict]],
+    carries_by_player: dict,
+) -> None:
+    st.subheader("Comparação lado a lado")
+    st.caption(
+        "Selecione dois jogadores para comparar mapas de conduções de impacto e métricas."
+    )
+
+    options = _player_options(all_players)
+    if not options:
+        st.info("Nenhum jogador disponível para comparação.")
+        return
+
+    labels = [o[3] for o in options]
+    id_by_label = {o[3]: o[0] for o in options}
+
+    selected_labels = st.multiselect(
+        "Jogadores (escolha 2)",
+        options=labels,
+        key=COMPARISON_SELECT_KEY,
+        max_selections=2,
+        placeholder="Selecione dois jogadores",
+    )
+
+    if len(selected_labels) < 2:
+        st.info("Selecione exatamente dois jogadores para comparar.")
+        return
+
+    col_left, col_right = st.columns(2, gap="medium")
+    for col, label in zip((col_left, col_right), selected_labels):
+        player_id = id_by_label[label]
+        player = _resolve_player(dict(players_by_id[player_id]), pool_by_position)
+        carries = carries_by_player.get(player_id)
+        team_label = player.get("team", "—")
+
+        with col:
+            if carries is None or carries.empty:
+                st.warning(f"Sem conduções de impacto para {player['player_name']}.")
+            else:
+                fig = draw_impact_pass_map(
+                    carries,
+                    player["player_name"],
+                    team_label,
+                    compact=False,
+                )
+                st.pyplot(fig, clear_figure=True, use_container_width=True)
+            st.markdown(_comparison_stats_card(player), unsafe_allow_html=True)
+
+
 def render_map_section(
     all_players: list[dict],
     players_by_id: dict[str, dict],
@@ -796,15 +886,26 @@ def main() -> None:
     rated, players_by_id, pool_by_position = compute_pass_ratings(all_players)
     selected_player_id = st.session_state.get("map_player_id")
 
-    render_map_section(
-        all_players,
-        players_by_id,
-        pool_by_position,
-        carries_by_player,
-        dribbles_by_player,
-    )
-    st.divider()
-    render_rating_section(rated, selected_player_id=selected_player_id)
+    tab_dashboard, tab_comparison = st.tabs(["Dashboard", "Comparação"])
+
+    with tab_dashboard:
+        render_map_section(
+            all_players,
+            players_by_id,
+            pool_by_position,
+            carries_by_player,
+            dribbles_by_player,
+        )
+        st.divider()
+        render_rating_section(rated, selected_player_id=selected_player_id)
+
+    with tab_comparison:
+        render_comparison_section(
+            all_players,
+            players_by_id,
+            pool_by_position,
+            carries_by_player,
+        )
 
 
 if __name__ == "__main__":
