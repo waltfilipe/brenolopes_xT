@@ -11,7 +11,7 @@ POSITION_GROUP_LABELS: dict[str, str] = {
     "Zagueiros": "center-backs",
     "Laterais": "full-backs",
     "Meio-campistas": "midfielders",
-    "Extremos": "wingers",
+    "Wingers": "wingers",
     "Atacantes": "forwards",
 }
 

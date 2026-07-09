@@ -805,6 +805,7 @@ def render_comparison_section(
                     player["player_name"],
                     team_label,
                     compact=False,
+                    high_res=True,
                 )
                 st.pyplot(fig, clear_figure=True, use_container_width=True)
             else:
@@ -813,6 +814,7 @@ def render_comparison_section(
                     player["player_name"],
                     team_label,
                     compact=False,
+                    high_res=True,
                 )
                 st.pyplot(fig, clear_figure=True, use_container_width=True)
             st.markdown(_comparison_stats_card(player, peer), unsafe_allow_html=True)

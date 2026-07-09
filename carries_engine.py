@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 30
+DATA_CACHE_VERSION = 31
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -220,7 +220,7 @@ POSITION_GROUP_AVG_LABEL_EN: dict[str, str] = {
     "Zagueiros": "Average - Center-backs",
     "Laterais": "Average - Full-backs",
     "Meio-campistas": "Average - Midfielders",
-    "Extremos": "Average - Wingers",
+    "Wingers": "Average - Wingers",
     "Atacantes": "Average - Forwards",
 }
 

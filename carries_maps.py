@@ -14,6 +14,8 @@ from mplsoccer import Pitch
 
 FIG_W, FIG_H = 10.0, 6.67
 FIG_DPI = 320
+FIG_W_HIGH, FIG_H_HIGH = 12.0, 8.0
+FIG_DPI_HIGH = 420
 FIG_W_COMPACT, FIG_H_COMPACT = 7.2, 4.8
 FIG_DPI_COMPACT = 300
 MAP_REF_WIDTH = 10.0
@@ -30,17 +32,18 @@ ARROW_ALPHA_EMPH = 0.82
 PASS_START_MARKER_SIZE = 7
 
 # Map chrome — dedicated header/footer bands (figure coords), separate from pitch.
-MAP_HEADER_FRAC_FULL = 0.098
-MAP_HEADER_FRAC_COMPACT = 0.088
+MAP_HEADER_FRAC_FULL = 0.114
+MAP_HEADER_FRAC_COMPACT = 0.100
 MAP_FOOTER_FRAC_FULL = 0.168
 MAP_FOOTER_FRAC_COMPACT = 0.148
+MAP_TITLE_Y_RATIO = 0.36
 MAP_TITLE_FONT_FULL = 13.5
 MAP_TITLE_FONT_COMPACT = 11.5
 ATTACK_ARROW_COLOR = "#94a3b8"
 ATTACK_LABEL_COLOR = "#94a3b8"
 ATTACK_ARROW_SPAN_FIG = 0.048
-ATTACK_ARROW_Y_RATIO = 0.30
-ATTACK_LABEL_Y_RATIO = 0.10
+ATTACK_ARROW_Y_RATIO = 0.22
+ATTACK_LABEL_Y_RATIO = 0.06
 ATTACK_ARROW_MUTATION_FULL = 14.0
 ATTACK_ARROW_MUTATION_COMPACT = 11.5
 ATTACK_ARROW_LW_FULL = 1.55
@@ -58,6 +61,14 @@ CMAP_PASS_DEST = LinearSegmentedColormap.from_list(
 
 def _map_scale(fig_w: float) -> float:
     return fig_w / MAP_REF_WIDTH
+
+
+def _map_canvas(*, compact: bool, high_res: bool = False) -> tuple[tuple[float, float], int]:
+    if high_res:
+        return (FIG_W_HIGH, FIG_H_HIGH), FIG_DPI_HIGH
+    if compact:
+        return (FIG_W_COMPACT, FIG_H_COMPACT), FIG_DPI_COMPACT
+    return (FIG_W, FIG_H), FIG_DPI
 
 
 def _base_pitch(*, figsize: tuple[float, float], dpi: int, bg: str = "#1a1a2e"):
@@ -141,7 +152,7 @@ def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> 
 
     fig.text(
         0.5,
-        1.0 - header_frac * 0.48,
+        1.0 - header_frac * MAP_TITLE_Y_RATIO,
         title,
         transform=fig.transFigure,
         fontsize=title_fs,
@@ -217,14 +228,10 @@ def draw_impact_pass_map(
     match_label: str = "todos os jogos",
     *,
     compact: bool = True,
+    high_res: bool = False,
 ):
     """Impact passes only — same visual language as the legacy pass map."""
-    if compact:
-        figsize = (FIG_W_COMPACT, FIG_H_COMPACT)
-        dpi = FIG_DPI_COMPACT
-    else:
-        figsize = (FIG_W, FIG_H)
-        dpi = FIG_DPI
+    figsize, dpi = _map_canvas(compact=compact, high_res=high_res)
 
     fig_w = figsize[0]
     scale = _map_scale(fig_w)
@@ -307,14 +314,11 @@ def draw_typical_impact_pass_map(
     *,
     max_vectors: int = MAX_TYPICAL_IMPACT_VECTORS,
     compact: bool = True,
+    high_res: bool = False,
+    map_title: str = "Threat carries - Wingers Mean",
 ):
     """Representative impact-carry vectors — most common binned start→end patterns."""
-    if compact:
-        figsize = (FIG_W_COMPACT, FIG_H_COMPACT)
-        dpi = FIG_DPI_COMPACT
-    else:
-        figsize = (FIG_W, FIG_H)
-        dpi = FIG_DPI
+    figsize, dpi = _map_canvas(compact=compact, high_res=high_res)
 
     fig_w = figsize[0]
     scale = _map_scale(fig_w)
@@ -350,7 +354,7 @@ def draw_typical_impact_pass_map(
                markersize=4, linestyle="None", label="Typical origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Typical threat carry patterns", compact=compact)
+    _finish_map(fig, ax, fig_w=fig_w, title=map_title, compact=compact)
     return fig
 
 

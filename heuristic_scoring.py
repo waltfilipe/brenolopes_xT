@@ -103,7 +103,7 @@ POSITION_GROUPS_ORDER = (
     "Zagueiros",
     "Laterais",
     "Meio-campistas",
-    "Extremos",
+    "Wingers",
     "Atacantes",
 )
 
@@ -123,10 +123,10 @@ _POSITION_TO_GROUP: dict[str, str] = {
     "RDM": "Meio-campistas",
     "LDM": "Meio-campistas",
     "DM": "Meio-campistas",
-    "RW": "Extremos",
-    "LW": "Extremos",
-    "RM": "Extremos",
-    "LM": "Extremos",
+    "RW": "Wingers",
+    "LW": "Wingers",
+    "RM": "Wingers",
+    "LM": "Wingers",
     "ST": "Atacantes",
     "CF": "Atacantes",
     "SS": "Atacantes",
@@ -138,7 +138,7 @@ GROUP_COLORS = {
     "Zagueiros": "#60a5fa",
     "Laterais": "#34d399",
     "Meio-campistas": "#fbbf24",
-    "Extremos": "#f472b6",
+    "Wingers": "#f472b6",
     "Atacantes": "#f87171",
 }
 
