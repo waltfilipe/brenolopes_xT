@@ -20,13 +20,11 @@ from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pas
 
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
-IMPACT_MODEL_LABELS = ce.IMPACT_MODEL_LABELS
 ABSOLUTE_METRIC_KEYS = ce.ABSOLUTE_METRIC_KEYS
 RELATIVE_METRIC_KEYS = ce.RELATIVE_METRIC_KEYS
 GENERAL_CARRIES_DRIBBLES_METRIC_KEYS = ce.GENERAL_CARRIES_DRIBBLES_METRIC_KEYS
 build_position_average_players = ce.build_position_average_players
 is_position_average_player_id = ce.is_position_average_player_id
-IMPACT_MODEL_SELECT_KEY = "impact_model_select"
 build_analytics = ce.build_analytics
 compute_pass_ratings = ce.compute_pass_ratings
 fmt_pct = ce.fmt_pct
@@ -53,6 +51,8 @@ st.set_page_config(page_title="Ball Carry & Dribble", layout="wide")
 st.markdown(
     """
     <style>
+    section[data-testid="stSidebar"] { display: none; }
+    [data-testid="stSidebarCollapsedControl"] { display: none; }
     .block-container { padding-top: 1.25rem; max-width: 1600px; }
     .player-card {
         background: linear-gradient(160deg, #151b2b 0%, #101522 100%);
@@ -845,31 +845,11 @@ def render_map_section(
     render_player_layout(player, carries, dribbles)
 
 
-def render_impact_model_selector() -> str:
-    options = list(IMPACT_MODEL_LABELS.keys())
-    with st.sidebar:
-        st.markdown("### Impact model")
-        impact_model = st.selectbox(
-            "Classification",
-            options=options,
-            format_func=lambda key: IMPACT_MODEL_LABELS[key],
-            key=IMPACT_MODEL_SELECT_KEY,
-            label_visibility="collapsed",
-            help=(
-                "Current: relative gain ΔxT/(1−xT) with thresholds 0.30 / 0.62. "
-                "Option 1 + short lane: distance-adjusted thresholds and short final-third carries."
-            ),
-        )
-    return impact_model
-
-
 def main() -> None:
-    impact_model = render_impact_model_selector()
-
     with st.spinner("Loading data…"):
-        _, all_players = load_analytics(impact_model=impact_model)
-        carries_by_player = load_carries(impact_model=impact_model)
-        dribbles_by_player = load_dribbles(impact_model=impact_model)
+        _, all_players = load_analytics(impact_model=IMPACT_MODEL_DEFAULT)
+        carries_by_player = load_carries(impact_model=IMPACT_MODEL_DEFAULT)
+        dribbles_by_player = load_dribbles(impact_model=IMPACT_MODEL_DEFAULT)
 
     _, players_by_id, pool_by_position = compute_pass_ratings(all_players)
     position_averages = build_position_average_players(pool_by_position)
