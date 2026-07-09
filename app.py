@@ -14,7 +14,6 @@ for _path in (_APP_ROOT, _APP_ROOT / "scripts_ballcarriers"):
         sys.path.insert(0, _entry)
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 import carries_engine as ce
 from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map
@@ -25,10 +24,8 @@ IMPACT_MODEL_LABELS = ce.IMPACT_MODEL_LABELS
 ABSOLUTE_METRIC_KEYS = ce.ABSOLUTE_METRIC_KEYS
 RELATIVE_METRIC_KEYS = ce.RELATIVE_METRIC_KEYS
 GENERAL_CARRIES_DRIBBLES_METRIC_KEYS = ce.GENERAL_CARRIES_DRIBBLES_METRIC_KEYS
-POSITION_GROUPS_ORDER = ce.POSITION_GROUPS_ORDER
-RATING_TOP_N = ce.RATING_TOP_N
-RATING_MIN_MINUTES_PCT = ce.RATING_MIN_MINUTES_PCT
-RATING_MIN_CARRIES_PCT = ce.RATING_MIN_PASSES_PCT
+build_position_average_players = ce.build_position_average_players
+is_position_average_player_id = ce.is_position_average_player_id
 IMPACT_MODEL_SELECT_KEY = "impact_model_select"
 build_analytics = ce.build_analytics
 compute_pass_ratings = ce.compute_pass_ratings
@@ -123,6 +120,11 @@ st.markdown(
         font-size: 0.88rem;
         font-weight: 700;
     }
+    .headline-rank {
+        color: #cbd5e1;
+        font-size: 0.88rem;
+        margin-bottom: 0.35rem;
+    }
     .cmp-arrow {
         font-size: 1rem;
         font-weight: 800;
@@ -135,6 +137,12 @@ st.markdown(
         flex-direction: column;
         gap: 0.12rem;
         min-width: 0;
+    }
+    .metric-rank-sub {
+        color: #64748b;
+        font-size: 0.74rem;
+        font-weight: 600;
+        line-height: 1.2;
     }
     .metric-tip {
         position: relative;
@@ -260,7 +268,6 @@ GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
     ("Drible certo no ataque", "1v1 vencido no terço final ofensivo."),
 )
 
-RATING_COLUMNS = ["Jogador", "Time", "Rating"]
 SELECTBOX_KEY = "map_player_select"
 COMPARISON_SELECT_KEY = "comparison_player_select"
 
@@ -316,12 +323,58 @@ def rating_value_color(pass_rating: float | None) -> str:
     return score_display_color(float(pass_rating) * 10.0)
 
 
-def _player_options(rated: list[dict]) -> list[tuple[str, str, str, str]]:
+def _player_options(
+    players: list[dict],
+    *,
+    position_averages: list[dict] | None = None,
+) -> list[tuple[str, str, str, str]]:
     rows = sorted(
-        {(p["player_id"], p["player_name"], p.get("team", "—")) for p in rated},
+        {
+            (p["player_id"], p["player_name"], p.get("team", "—"))
+            for p in players
+            if not is_position_average_player_id(str(p["player_id"]))
+        },
         key=lambda x: _norm(x[1]),
     )
-    return [(pid, name, team, f"{name} ({team})") for pid, name, team in rows]
+    options = [(pid, name, team, f"{name} ({team})") for pid, name, team in rows]
+    if position_averages:
+        avg_options = [
+            (p["player_id"], p["player_name"], p.get("team", "—"), p["player_name"])
+            for p in position_averages
+        ]
+        options = avg_options + options
+    return options
+
+
+def _aggregate_events_for_pool(
+    pool: list[dict],
+    by_player: dict,
+):
+    import pandas as pd
+
+    frames = []
+    for player in pool:
+        pid = str(player["player_id"])
+        if is_position_average_player_id(pid):
+            continue
+        frame = by_player.get(pid)
+        if frame is not None and not frame.empty:
+            frames.append(frame)
+    if not frames:
+        return None
+    return pd.concat(frames, ignore_index=True)
+
+
+def _events_for_player(
+    player: dict,
+    pool_by_position: dict[str, list[dict]],
+    by_player: dict,
+):
+    if player.get("is_position_average"):
+        group = str(player.get("position_group") or "—")
+        pool = pool_by_position.get(group, [])
+        return _aggregate_events_for_pool(pool, by_player)
+    return by_player.get(str(player["player_id"]))
 
 
 def _sync_player_selection(
@@ -332,70 +385,6 @@ def _sync_player_selection(
     if qp and qp in players_by_id:
         st.session_state["map_player_id"] = qp
         st.session_state[SELECTBOX_KEY] = label_by_id[qp]
-
-
-def render_rating_table(
-    rows: list[dict],
-    *,
-    selected_player_id: str | None,
-) -> None:
-    if not rows:
-        st.info("Nenhum jogador elegível nesta posição.")
-        return
-
-    body = []
-    for row in rows:
-        pid = html.escape(str(row["player_id"]))
-        rating_txt = fmt_rating_score(row["Rating"])
-        sel = " sel" if selected_player_id and str(row["player_id"]) == str(selected_player_id) else ""
-        body.append(
-            f'<tr class="row{sel}" data-pid="{pid}" onclick="pickPlayer(\'{pid}\')">'
-            f"<td>{html.escape(str(row['Jogador']))}</td>"
-            f"<td class='team'>{html.escape(str(row['Time']))}</td>"
-            f'<td class="rating">{rating_txt}</td>'
-            "</tr>"
-        )
-
-    page = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
-*{{box-sizing:border-box}}
-body{{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  color:#e8edf5;background:transparent}}
-.rx{{width:100%;border-collapse:separate;border-spacing:0;font-size:0.9rem;
-  border:1px solid #2a3550;border-radius:10px;overflow:hidden}}
-.rx th,.rx td{{padding:9px 12px;text-align:left;vertical-align:middle}}
-.rx th{{background:linear-gradient(180deg,#1b2438,#141b2d);color:#8fa3bf;font-weight:600;
-  font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid #2f3b56}}
-.rx td{{border-bottom:1px solid #232d42}}
-.rx tr.row{{cursor:pointer;transition:background .15s ease}}
-.rx tr.row:hover td{{background:#1a2238}}
-.rx tr.row.sel td{{background:#1c3354}}
-.rx tr.row.sel td:first-child{{box-shadow:inset 3px 0 0 #60a5fa}}
-.rx tr:last-child td{{border-bottom:none}}
-.team{{color:#9fb0c7}}
-.rating{{font-weight:700;color:#dbeafe}}
-</style>
-<script>
-function pickPlayer(pid) {{
-  try {{
-    const base = window.parent !== window ? window.parent : window;
-    const url = new URL(base.location.href);
-    url.searchParams.set("player_id", pid);
-    base.location.href = url.toString();
-  }} catch (e) {{
-    const url = new URL(window.location.href);
-    url.searchParams.set("player_id", pid);
-    window.location.href = url.toString();
-  }}
-}}
-</script></head><body>
-<table class="rx"><thead><tr>
-{"".join(f"<th>{html.escape(c)}</th>" for c in RATING_COLUMNS)}
-</tr></thead><tbody>{"".join(body)}</tbody></table>
-</body></html>"""
-
-    height = min(44 * len(rows) + 52, 920)
-    components.html(page, height=height, scrolling=False)
 
 
 def _rating_warnings_html(player: dict) -> str:
@@ -444,6 +433,17 @@ def _label_html(key: str) -> str:
     )
 
 
+def _metric_rank_subline(player: dict, metric_ranks: dict, key: str) -> str:
+    info = metric_ranks.get(key)
+    if not info:
+        return ""
+    rank = int(info["rank"])
+    group = str(player.get("position_group") or "—")
+    if rank == 1:
+        return f"Líder entre {group}"
+    return f"{rank}º entre {group}"
+
+
 def _headline_html(player: dict, metric_ranks: dict) -> str:
     summary = build_headline_summary(player, metric_ranks)
     warnings = _rating_warnings_html(player)
@@ -453,6 +453,7 @@ def _headline_html(player: dict, metric_ranks: dict) -> str:
         f'<span class="headline-score">{html.escape(summary["score"])}</span>'
         f'<span class="headline-band">{html.escape(summary["band"])}</span>'
         f"</div>"
+        f'<div class="headline-rank">{html.escape(summary["rank_line"])}</div>'
         f'{warnings}'
         "</div>"
     )
@@ -486,16 +487,34 @@ def _metric_line_html(
     metric_ranks: dict,
     player: dict,
     *,
-    show_rank: bool = False,
+    show_rank: bool = True,
     use_tooltip_label: bool = True,
     peer: dict | None = None,
 ) -> str:
     label_html = _label_html(key) if use_tooltip_label else html.escape(label)
-    label_block = f'<div class="metric-label-block">{label_html}</div>'
+    rank_sub = ""
+    badge = ""
+    if show_rank:
+        info = metric_ranks.get(key)
+        if info:
+            rank = int(info["rank"])
+            total = int(info["total"])
+            color = rank_color(rank, total)
+            badge = (
+                f'<span class="rank-tip">'
+                f'<span class="rank-badge" style="background:{color}"></span>'
+                f'<span class="rank-tipbox">{rank}/{total}</span>'
+                f"</span>"
+            )
+        sub = _metric_rank_subline(player, metric_ranks, key)
+        if sub:
+            rank_sub = f'<div class="metric-rank-sub">{html.escape(sub)}</div>'
+    label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
     arrow = _comparison_arrow_html(player.get(key), peer.get(key) if peer else None) if peer else ""
+    extras = [part for part in (badge, arrow) if part]
     value_html = (
-        f'<span class="val-wrap">{arrow}<span class="stat-val">{html.escape(value)}</span></span>'
-        if arrow
+        f'<span class="val-wrap">{"".join(extras)}<span class="stat-val">{html.escape(value)}</span></span>'
+        if extras
         else f'<span class="stat-val">{html.escape(value)}</span>'
     )
     return (
@@ -508,16 +527,25 @@ def _metric_line_html(
 
 def _section_header_html(title: str, section_key: str, player: dict) -> str:
     section_ratings = player.get("section_ratings") if isinstance(player.get("section_ratings"), dict) else {}
+    section_rank_info = player.get("section_rating_ranks") if isinstance(player.get("section_rating_ranks"), dict) else {}
     score = section_ratings.get(section_key)
     pill = ""
     if score is not None:
         txt = fmt_rating_score(score)
-        color = rating_value_color(score)
-        txt_color = _badge_text_color(color)
-        pill = (
-            f'<span class="section-rating-pill" style="background:{color};color:{txt_color}">'
-            f"{html.escape(txt)}</span>"
-        )
+        rank_info = section_rank_info.get(section_key)
+        if rank_info:
+            color = rank_color(int(rank_info["rank"]), int(rank_info["total"]))
+            txt_color = _badge_text_color(color)
+            rank_txt = f'{int(rank_info["rank"])}/{int(rank_info["total"])}'
+            pill = (
+                f'<span class="section-rating-tip">'
+                f'<span class="section-rating-pill" style="background:{color};color:{txt_color}">'
+                f"{html.escape(txt)}</span>"
+                f'<span class="rating-tipbox">{rank_txt}</span>'
+                f"</span>"
+            )
+        else:
+            pill = f'<span class="section-rating-pill">{html.escape(txt)}</span>'
     return (
         '<div class="stat-section-row">'
         f'<span class="stat-section">{html.escape(title)}</span>'
@@ -644,17 +672,17 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         ),
     ]
     abs_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, False),
+        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
     ]
     rel_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, False),
+        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, True),
     ]
     general_carry_dribble_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
             "Perigo no ataque",
             "general_carries_dribbles",
             GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
-            False,
+            True,
         ),
     ]
 
@@ -693,7 +721,7 @@ def _resolve_player(
 def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
     sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas", None, COMPARISON_METRIC_KEYS, False),
+        ("Métricas", None, COMPARISON_METRIC_KEYS, True),
     ]
     header = (
         '<div class="player-card player-info-card">'
@@ -771,13 +799,14 @@ def render_map_section(
     all_players: list[dict],
     players_by_id: dict[str, dict],
     pool_by_position: dict[str, list[dict]],
+    position_averages: list[dict],
     carries_by_player: dict,
     dribbles_by_player: dict,
 ) -> None:
     st.subheader("Mapas")
-    st.caption("Clique em um jogador na tabela ou selecione abaixo para ver conduções e dribles.")
+    st.caption("Selecione um jogador ou a média da posição para ver conduções e dribles.")
 
-    options = _player_options(all_players)
+    options = _player_options(all_players, position_averages=position_averages)
     if not options:
         st.info("Nenhum jogador com conduções para o mapa.")
         return
@@ -796,51 +825,19 @@ def render_map_section(
     )
 
     if not selected_label:
-        st.info("Selecione um jogador na lista ou clique em uma linha da tabela de rating.")
+        st.info("Selecione um jogador na lista.")
         return
 
     player_id = id_by_label[selected_label]
     st.session_state["map_player_id"] = player_id
     player = dict(players_by_id[player_id])
-    if not player.get("eligible_for_rating"):
+    if not player.get("eligible_for_rating") and not player.get("is_position_average"):
         group = str(player.get("position_group") or "—")
         player = rate_player_vs_eligible_pool(player, pool_by_position.get(group, []))
-    carries = carries_by_player.get(player_id)
-    dribbles = dribbles_by_player.get(player_id)
+    carries = _events_for_player(player, pool_by_position, carries_by_player)
+    dribbles = _events_for_player(player, pool_by_position, dribbles_by_player)
 
     render_player_layout(player, carries, dribbles)
-
-
-def render_rating_section(rated: list[dict], *, selected_player_id: str | None) -> None:
-    st.subheader("Ranking por posição")
-    st.caption(
-        "Nota de 3,0 a 9,0 comparando jogadores da mesma posição. "
-        f"Elegível: mais de {int(RATING_MIN_MINUTES_PCT * 100)}% dos minutos e "
-        f"pelo menos {int(RATING_MIN_CARRIES_PCT * 100)}% das conduções do grupo."
-    )
-    for group in POSITION_GROUPS_ORDER:
-        subset = sorted(
-            [p for p in rated if p["position_group"] == group],
-            key=lambda p: p.get("pass_rating", 0),
-            reverse=True,
-        )[:RATING_TOP_N]
-        if not subset:
-            continue
-        with st.expander(f"{group} ({len(subset)})", expanded=group == "Extremos"):
-            rows = [
-                {
-                    "player_id": p["player_id"],
-                    "Jogador": p["player_name"],
-                    "Time": p["team"],
-                    "Rating": p["pass_rating"],
-                    "metric_ranks": p.get("metric_ranks", {}),
-                }
-                for p in subset
-            ]
-            render_rating_table(
-                rows,
-                selected_player_id=selected_player_id,
-            )
 
 
 def render_impact_model_selector() -> str:
@@ -876,8 +873,10 @@ def main() -> None:
         carries_by_player = load_carries(impact_model=impact_model)
         dribbles_by_player = load_dribbles(impact_model=impact_model)
 
-    rated, players_by_id, pool_by_position = compute_pass_ratings(all_players)
-    selected_player_id = st.session_state.get("map_player_id")
+    _, players_by_id, pool_by_position = compute_pass_ratings(all_players)
+    position_averages = build_position_average_players(pool_by_position)
+    for avg_player in position_averages:
+        players_by_id[avg_player["player_id"]] = avg_player
 
     tab_dashboard, tab_comparison = st.tabs(["Dashboard", "Comparação"])
 
@@ -886,11 +885,10 @@ def main() -> None:
             all_players,
             players_by_id,
             pool_by_position,
+            position_averages,
             carries_by_player,
             dribbles_by_player,
         )
-        st.divider()
-        render_rating_section(rated, selected_player_id=selected_player_id)
 
     with tab_comparison:
         render_comparison_section(

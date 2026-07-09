@@ -1230,6 +1230,107 @@ def compute_pass_ratings(players: list[dict]) -> tuple[list[dict], dict[str, dic
     return rated_pool, players_by_id, pool_by_position
 
 
+POSITION_AVG_ID_PREFIX = "__pos_avg__"
+
+_SKIP_AVG_KEYS: frozenset[str] = frozenset({
+    "player_id",
+    "player_name",
+    "team",
+    "position",
+    "position_group",
+    "eligible_minutes",
+    "eligible_passes",
+    "eligible_for_rating",
+    "eligible_ranking",
+    "rating_is_solo",
+    "rating_is_compared",
+    "position_min_passes",
+    "position_min_minutes",
+    "pass_rating",
+    "metric_ranks",
+    "section_ratings",
+    "section_rating_ranks",
+    "comparison_cards",
+    "card_rank",
+    "card_rating",
+    "is_position_average",
+})
+
+_INTEGER_AVG_KEYS: frozenset[str] = frozenset({
+    "minutes",
+    "carries_total",
+    "passes_completed",
+    "passes_total",
+    "impact_passes",
+    "impact_attempted",
+    "high_impact_passes",
+    "high_impact_attempted",
+    "dribbles_total",
+    "dribbles_success",
+    "dribbles_final_third",
+    "carries_to_box",
+    "carries_impact_to_box",
+    "progressive_passes",
+})
+
+
+def is_position_average_player_id(player_id: str) -> bool:
+    return str(player_id).startswith(POSITION_AVG_ID_PREFIX)
+
+
+def position_average_player_id(group: str) -> str:
+    return f"{POSITION_AVG_ID_PREFIX}{group}"
+
+
+def build_position_average_player(group: str, pool: list[dict]) -> dict | None:
+    """Synthetic profile with mean metrics for eligible players in a position group."""
+    eligible = [p for p in pool if p.get("eligible_for_rating")]
+    if not eligible:
+        return None
+
+    base: dict = {
+        "player_id": position_average_player_id(group),
+        "player_name": f"Média - {group}",
+        "team": "Posição",
+        "position": group,
+        "position_group": group,
+        "is_position_average": True,
+        "eligible_for_rating": True,
+        "eligible_minutes": True,
+        "eligible_passes": True,
+    }
+
+    keys_to_avg: set[str] = set()
+    for player in eligible:
+        for key, value in player.items():
+            if key in _SKIP_AVG_KEYS:
+                continue
+            if isinstance(value, (int, float)):
+                keys_to_avg.add(key)
+
+    for key in keys_to_avg:
+        values = [float(player[key]) for player in eligible if player.get(key) is not None]
+        if not values:
+            continue
+        avg = sum(values) / len(values)
+        if key in _INTEGER_AVG_KEYS:
+            base[key] = int(round(avg))
+        else:
+            base[key] = avg
+
+    return rate_player_vs_eligible_pool(base, eligible)
+
+
+def build_position_average_players(pool_by_position: dict[str, list[dict]]) -> list[dict]:
+    averages: list[dict] = []
+    for group in POSITION_GROUPS_ORDER:
+        pool = pool_by_position.get(group, [])
+        avg_player = build_position_average_player(group, pool)
+        if avg_player:
+            averages.append(avg_player)
+    return averages
+
+
 def _metric_ranks_for_keys(pool: list[dict], keys: tuple[str, ...]) -> dict[str, dict[str, dict]]:
     n = len(pool)
     if n == 0:
