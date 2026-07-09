@@ -161,7 +161,7 @@ METRIC_TOOLTIPS: dict[str, str] = {
     "dxt_per_pass": "Average field gain on each completed carry.",
     "dxt_gt_015_pct": "Share of carries with clear progress toward goal.",
     "carries_to_box_p90": "Carries ending inside the penalty area, per game.",
-    "carries_impact_to_box_p90": "Penalty-box entries classified as threat carries.",
+    "carries_impact_to_box_p90": "Penalty-box entries classified as threat carries, per game.",
     "dribbles_final_third_p90": "Successful 1v1s in the final third, per game.",
     "carries_total": "Total carries with the ball at feet in the sample.",
     "dribbles_total": "Total dribble attempts recorded.",

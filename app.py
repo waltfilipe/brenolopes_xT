@@ -691,7 +691,7 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
     ]
     general_carry_dribble_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
-            "Final Third Threat",
+            "Final Third Threat (PER GAME)",
             "general_carries_dribbles",
             GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
             True,
