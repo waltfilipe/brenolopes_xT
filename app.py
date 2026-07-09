@@ -256,6 +256,55 @@ st.markdown(
         border: 1px solid rgba(255,255,255,0.18);
         white-space: nowrap;
     }
+    .picker-shell {
+        margin: 0.35rem 0 0.85rem 0;
+    }
+    .picker-heading {
+        color: #94a3b8;
+        font-size: 0.82rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+    .picker-scroll {
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid #2a3550;
+        border-radius: 10px;
+        background: #101522;
+        padding: 0.35rem;
+    }
+    .picker-row {
+        padding: 0.48rem 0.72rem;
+        border-radius: 7px;
+        font-size: 0.88rem;
+        line-height: 1.25;
+        margin: 0.12rem 0;
+        border: 1px solid transparent;
+    }
+    .picker-selected {
+        color: #f8fafc;
+        font-weight: 700;
+        background: #1c3354;
+        border-color: #60a5fa;
+    }
+    .picker-blurred {
+        color: #64748b;
+        opacity: 0.42;
+        filter: blur(0.65px);
+        user-select: none;
+        pointer-events: none;
+    }
+    .map-title {
+        color: #e2e8f0;
+        font-size: 0.92rem;
+        font-weight: 700;
+        margin: 0.15rem 0 0.35rem 0;
+    }
+    .map-subtitle {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        margin: 0 0 0.45rem 0;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -276,8 +325,8 @@ GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
     ("Drible certo no ataque", "1v1 vencido no terço final ofensivo."),
 )
 
-SELECTBOX_KEY = "map_player_select"
-COMPARISON_SELECT_KEY = "comparison_player_select"
+LOCKED_DASHBOARD_PLAYER_NAME = "Breno Lopes"
+LOCKED_COMPARISON_AVG_LABEL = "Média - Extremos"
 
 COMPARISON_METRIC_KEYS: tuple[str, ...] = (
     "carries_total",
@@ -329,6 +378,53 @@ def rating_value_color(pass_rating: float | None) -> str:
     if pass_rating is None:
         return "#334155"
     return score_display_color(float(pass_rating) * 10.0)
+
+
+def _player_id_by_name(players: list[dict], name: str) -> str | None:
+    for player in players:
+        if player.get("player_name") == name:
+            return str(player["player_id"])
+    return None
+
+
+def _option_label_for_id(
+    options: list[tuple[str, str, str, str]],
+    player_id: str,
+) -> str | None:
+    for pid, _, _, label in options:
+        if str(pid) == str(player_id):
+            return label
+    return None
+
+
+def _render_locked_picker(
+    labels: list[str],
+    active_labels: set[str],
+    *,
+    title: str,
+) -> None:
+    rows = []
+    for label in labels:
+        if label in active_labels:
+            cls = "picker-row picker-selected"
+        else:
+            cls = "picker-row picker-blurred"
+        rows.append(f'<div class="{cls}">{html.escape(label)}</div>')
+    st.markdown(
+        f'<div class="picker-shell">'
+        f'<div class="picker-heading">{html.escape(title)}</div>'
+        f'<div class="picker-scroll">{"".join(rows)}</div>'
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _map_heading(title: str, subtitle: str = "") -> None:
+    sub = f'<div class="map-subtitle">{html.escape(subtitle)}</div>' if subtitle else ""
+    st.markdown(
+        f'<div class="map-title">{html.escape(title)}</div>{sub}',
+        unsafe_allow_html=True,
+    )
 
 
 def _player_options(
@@ -383,16 +479,6 @@ def _events_for_player(
         pool = pool_by_position.get(group, [])
         return _aggregate_events_for_pool(pool, by_player)
     return by_player.get(str(player["player_id"]))
-
-
-def _sync_player_selection(
-    players_by_id: dict[str, dict],
-    label_by_id: dict[str, str],
-) -> None:
-    qp = st.query_params.get("player_id")
-    if qp and qp in players_by_id and qp in label_by_id:
-        st.session_state["map_player_id"] = qp
-        st.session_state[SELECTBOX_KEY] = label_by_id[qp]
 
 
 def _rating_warnings_html(player: dict) -> str:
@@ -659,30 +745,34 @@ def _player_card_html(
 
 def render_player_layout(player: dict, carries, dribbles) -> None:
     team_label = player.get("team", "—")
+    player_name = player["player_name"]
     col_map1, col_map2, col_map3 = st.columns(3, gap="small")
 
     with col_map1:
+        _map_heading(player_name, "Todas as conduções")
         st.caption("Por onde costuma conduzir a bola")
         if carries is None or carries.empty:
             st.warning("Sem conduções para este jogador.")
         else:
-            fig_all = draw_all_carries_map(carries, player["player_name"], team_label, compact=False)
+            fig_all = draw_all_carries_map(carries, player_name, team_label, compact=False)
             st.pyplot(fig_all, clear_figure=True, use_container_width=True)
 
     with col_map2:
+        _map_heading(player_name, "Conduções de impacto")
         st.caption("Onde realmente muda o jogo ao conduzir")
         if carries is None or carries.empty:
             st.warning("Sem conduções de impacto para este jogador.")
         else:
-            fig = draw_impact_pass_map(carries, player["player_name"], team_label, compact=False)
+            fig = draw_impact_pass_map(carries, player_name, team_label, compact=False)
             st.pyplot(fig, clear_figure=True, use_container_width=True)
 
     with col_map3:
+        _map_heading(player_name, "Dribles")
         st.caption("Onde tenta e onde acerta o 1v1")
         if dribbles is None or dribbles.empty:
             st.info("Sem dribles com coordenadas para este jogador.")
         else:
-            fig_drib = draw_dribble_map(dribbles, player["player_name"], team_label, compact=False)
+            fig_drib = draw_dribble_map(dribbles, player_name, team_label, compact=False)
             st.pyplot(fig_drib, clear_figure=True, use_container_width=True)
 
     general_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
@@ -785,7 +875,7 @@ def render_comparison_section(
 ) -> None:
     st.subheader("Comparação lado a lado")
     st.caption(
-        "Selecione dois jogadores — ou a média de uma posição — para comparar mapas e métricas."
+        "Comparação fixa: média dos extremos vs Breno Lopes."
     )
 
     options = _player_options(all_players, position_averages=position_averages)
@@ -794,19 +884,22 @@ def render_comparison_section(
         return
 
     labels = [o[3] for o in options]
-    id_by_label = {o[3]: o[0] for o in options}
+    breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
+    breno_label = _option_label_for_id(options, breno_id) if breno_id else None
+    locked_labels = {LOCKED_COMPARISON_AVG_LABEL}
+    if breno_label:
+        locked_labels.add(breno_label)
 
-    selected_labels = st.multiselect(
-        "Jogadores (escolha 2)",
-        options=labels,
-        key=COMPARISON_SELECT_KEY,
-        max_selections=2,
-        placeholder="Selecione dois jogadores",
-    )
-
-    if len(selected_labels) < 2:
-        st.info("Selecione exatamente dois jogadores para comparar.")
+    if len(locked_labels) < 2 or LOCKED_COMPARISON_AVG_LABEL not in labels:
+        st.error("Não foi possível montar a comparação fixa (Média - Extremos e Breno Lopes).")
         return
+
+    _render_locked_picker(labels, locked_labels, title="Jogadores (seleção travada)")
+
+    selected_labels = [LOCKED_COMPARISON_AVG_LABEL]
+    if breno_label:
+        selected_labels.append(breno_label)
+    id_by_label = {o[3]: o[0] for o in options}
 
     resolved: list[tuple[str, dict]] = []
     for label in selected_labels:
@@ -824,6 +917,12 @@ def render_comparison_section(
         team_label = player.get("team", "—")
 
         with col:
+            map_subtitle = (
+                "Padrões típicos de condução de impacto"
+                if player.get("is_position_average")
+                else "Conduções de impacto"
+            )
+            _map_heading(player["player_name"], map_subtitle)
             if carries is None or carries.empty:
                 st.warning(f"Sem conduções de impacto para {player['player_name']}.")
             elif player.get("is_position_average"):
@@ -853,7 +952,7 @@ def render_map_section(
     dribbles_by_player: dict,
 ) -> None:
     st.subheader("Mapas")
-    st.caption("Selecione um jogador para ver conduções e dribles.")
+    st.caption("Visualização travada em Breno Lopes.")
 
     options = _player_options(all_players)
     if not options:
@@ -861,23 +960,19 @@ def render_map_section(
         return
 
     labels = [o[3] for o in options]
-    id_by_label = {o[3]: o[0] for o in options}
-    label_by_id = {o[0]: o[3] for o in options}
-
-    _sync_player_selection(players_by_id, label_by_id)
-
-    selected_label = st.selectbox(
-        "Jogador",
-        options=labels,
-        key=SELECTBOX_KEY,
-        placeholder="Selecione um jogador",
-    )
-
-    if not selected_label:
-        st.info("Selecione um jogador na lista.")
+    breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
+    if not breno_id:
+        st.error(f"Jogador {LOCKED_DASHBOARD_PLAYER_NAME} não encontrado nos dados.")
         return
 
-    player_id = id_by_label[selected_label]
+    breno_label = _option_label_for_id(options, breno_id)
+    if not breno_label:
+        st.error(f"Jogador {LOCKED_DASHBOARD_PLAYER_NAME} não encontrado na lista.")
+        return
+
+    _render_locked_picker(labels, {breno_label}, title="Jogador (seleção travada)")
+
+    player_id = breno_id
     st.session_state["map_player_id"] = player_id
     player = dict(players_by_id[player_id])
     if not player.get("eligible_for_rating"):

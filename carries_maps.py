@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.lines import Line2D
-from matplotlib.patches import FancyArrowPatch, Rectangle
+from matplotlib.patches import Rectangle
 from mplsoccer import Pitch
 
-FIG_W, FIG_H = 9.6, 6.4
-FIG_DPI = 280
-FIG_W_COMPACT, FIG_H_COMPACT = 6.8, 4.5
-FIG_DPI_COMPACT = 280
-MAP_REF_WIDTH = 9.6
+FIG_W, FIG_H = 10.0, 6.67
+FIG_DPI = 320
+FIG_W_COMPACT, FIG_H_COMPACT = 7.2, 4.8
+FIG_DPI_COMPACT = 300
+MAP_REF_WIDTH = 10.0
 FIELD_X, FIELD_Y = 120.0, 80.0
 PASS_DEST_HEATMAP_COLS = 12
 PASS_DEST_HEATMAP_ROWS = 8
@@ -68,24 +68,35 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(fig, *, fig_w: float) -> None:
+def _attack_arrow(ax, *, fig_w: float) -> None:
     scale = _map_scale(fig_w)
-    fig.patches.append(
-        FancyArrowPatch(
-            (0.44, 0.045),
-            (0.56, 0.045),
-            transform=fig.transFigure,
+    ax.annotate(
+        "",
+        xy=(68.0, 3.4),
+        xytext=(52.0, 3.4),
+        arrowprops=dict(
             arrowstyle="-|>",
-            mutation_scale=10 * scale,
-            linewidth=1.4 * scale,
-            color="#aaaaaa",
-        )
+            color="#b0bdd0",
+            lw=1.65 * scale,
+            mutation_scale=13 * scale,
+        ),
+        zorder=20,
     )
-    fig.text(
-        0.50, 0.012, "Direção de ataque",
-        ha="center", va="bottom", transform=fig.transFigure,
-        fontsize=7.0 * scale, color="#aaaaaa",
+    ax.text(
+        60.0,
+        1.0,
+        "Direção de ataque",
+        ha="center",
+        va="bottom",
+        fontsize=7.5 * scale,
+        color="#b0bdd0",
+        zorder=20,
     )
+
+
+def _finish_map(fig, ax, *, fig_w: float) -> None:
+    _attack_arrow(ax, fig_w=fig_w)
+    fig.subplots_adjust(left=0.02, right=0.99, top=0.99, bottom=0.04)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
@@ -142,11 +153,7 @@ def draw_all_carries_map(
                markersize=4, linestyle="None", label="Origem da condução"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    ax.set_title(
-        f"{player_name}\nTodas as conduções · {match_label}",
-        color="white", fontsize=8.4 * scale, pad=5,
-    )
-    _attack_arrow(fig, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w)
     return fig
 
 
@@ -198,11 +205,7 @@ def draw_impact_pass_map(
                markersize=4, linestyle="None", label="Origem"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    ax.set_title(
-        f"{player_name}\nConduções de impacto · {match_label}",
-        color="white", fontsize=8.4 * scale, pad=5,
-    )
-    _attack_arrow(fig, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w)
     return fig
 
 
@@ -293,11 +296,7 @@ def draw_typical_impact_pass_map(
                markersize=4, linestyle="None", label="Origem típica"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    ax.set_title(
-        f"{player_name}\nPadrões típicos de condução de impacto · {match_label}",
-        color="white", fontsize=8.4 * scale, pad=5,
-    )
-    _attack_arrow(fig, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w)
     return fig
 
 
@@ -349,11 +348,7 @@ def draw_dribble_map(
                linestyle="None", label="Drible falho"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    ax.set_title(
-        f"{player_name}\nDribles · {match_label}",
-        color="white", fontsize=8.4 * scale, pad=5,
-    )
-    _attack_arrow(fig, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w)
     return fig
 
 
@@ -421,9 +416,5 @@ def draw_pass_destination_heatmap(
     cbar.ax.yaxis.set_tick_params(color="#ffffff", labelsize=6)
     plt.setp(cbar.ax.axes.get_yticklabels(), color="#ffffff")
     cbar.set_label("Conduções impact", color="#c7cdda", fontsize=7 * scale)
-    ax.set_title(
-        f"{player_name}\nDestino — conduções impact · {PASS_DEST_HEATMAP_COLS}×{PASS_DEST_HEATMAP_ROWS} · {match_label}",
-        color="white", fontsize=8.2 * scale, pad=5,
-    )
-    _attack_arrow(fig, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w)
     return fig
