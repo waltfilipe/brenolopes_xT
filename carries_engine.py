@@ -73,8 +73,8 @@ IMPACT_MODEL_DEFAULT = "atual"
 IMPACT_MODEL_OPT1_SHORT_FT = "opt1_short_ft"
 
 IMPACT_MODEL_LABELS: dict[str, str] = {
-    IMPACT_MODEL_DEFAULT: "Atual (ganho relativo)",
-    IMPACT_MODEL_OPT1_SHORT_FT: "Opção 1 + via curta",
+    IMPACT_MODEL_DEFAULT: "Current (relative gain)",
+    IMPACT_MODEL_OPT1_SHORT_FT: "Option 1 + short lane",
 }
 
 # Opção 1: limiares relativos ajustados por distância do passe.
@@ -139,39 +139,39 @@ RATING_METRIC_KEYS: tuple[str, ...] = tuple(
 )
 
 METRIC_LABELS: dict[str, str] = {
-    "impact_passes_p90": "Conduções que mudam o jogo (por jogo)",
-    "impact_per_pass": "Conduções produtivas (%)",
-    "phi_p90": "Conduções decisivas (por jogo)",
-    "dxt_p90": "Progressão com a bola (por jogo)",
-    "dxt_per_pass": "Avanço médio por condução",
-    "dxt_gt_015_pct": "Conduções de alto avanço",
-    "carries_to_box_p90": "Chegadas à área com a bola (por jogo)",
-    "carries_impact_to_box_p90": "Chegadas de impacto à área (por jogo)",
-    "dribbles_final_third_p90": "Dribles certos no ataque (por jogo)",
-    "carries_total": "Conduções totais",
-    "dribbles_total": "Dribles tentados",
-    "dribble_success_pct": "Taxa de acerto nos dribles",
+    "impact_passes_p90": "Threat Carries",
+    "impact_per_pass": "Productive carries (%)",
+    "phi_p90": "High-Threat Carries",
+    "dxt_p90": "Carry Threat",
+    "dxt_per_pass": "Average Carry Threat",
+    "dxt_gt_015_pct": "% High-Threat Carries",
+    "carries_to_box_p90": "Box Entries",
+    "carries_impact_to_box_p90": "Threat Box Entries",
+    "dribbles_final_third_p90": "Successful Dribbles",
+    "carries_total": "Total carries",
+    "dribbles_total": "Dribbles attempted",
+    "dribble_success_pct": "Dribble success rate",
 }
 
 METRIC_TOOLTIPS: dict[str, str] = {
-    "impact_passes_p90": "Média por jogo de conduções que avançam o time de forma relevante.",
-    "impact_per_pass": "Proporção de conduções classificadas como produtivas.",
-    "phi_p90": "Conduções de impacto máximo — as que mais abrem o jogo.",
-    "dxt_p90": "Quanto o jogador melhora a posição ofensiva do time ao conduzir, por jogo.",
-    "dxt_per_pass": "Ganho médio de campo a cada condução completada.",
-    "dxt_gt_015_pct": "Percentual de conduções com avanço claro em direção ao gol.",
-    "carries_to_box_p90": "Conduções que terminam dentro da grande área, por jogo.",
-    "carries_impact_to_box_p90": "Chegadas à área classificadas como conduções de impacto.",
-    "dribbles_final_third_p90": "1v1 vencidos no terço final ofensivo, por jogo.",
-    "carries_total": "Total de conduções com bola nos pés na temporada.",
-    "dribbles_total": "Total de tentativas de drible registradas.",
-    "dribble_success_pct": "Percentual de dribles concluídos com sucesso.",
-    "minutes": "Minutos totais em campo na amostra.",
-    "minutes_pct": "Percentual de jogos disputados pelo time em que entrou.",
-    "impact_passes": "Conduções que mudam o jogo na temporada.",
-    "high_impact_passes": "Conduções decisivas na temporada.",
-    "impact_carry_avg_distance_m": "Comprimento médio das conduções de impacto completadas.",
-    "passes_completed": "Total de conduções completadas.",
+    "impact_passes_p90": "Per-game average of carries that meaningfully advance the team.",
+    "impact_per_pass": "Share of carries classified as productive.",
+    "phi_p90": "Maximum-impact carries — those that open the game most.",
+    "dxt_p90": "How much the player improves the team's attacking position per game through carries.",
+    "dxt_per_pass": "Average field gain on each completed carry.",
+    "dxt_gt_015_pct": "Share of carries with clear progress toward goal.",
+    "carries_to_box_p90": "Carries ending inside the penalty area, per game.",
+    "carries_impact_to_box_p90": "Penalty-box entries classified as threat carries.",
+    "dribbles_final_third_p90": "Successful 1v1s in the final third, per game.",
+    "carries_total": "Total carries with the ball at feet in the sample.",
+    "dribbles_total": "Total dribble attempts recorded.",
+    "dribble_success_pct": "Share of dribbles completed successfully.",
+    "minutes": "Total minutes on the pitch in the sample.",
+    "minutes_pct": "Share of team matches in which the player appeared.",
+    "impact_passes": "Threat carries in the sample.",
+    "high_impact_passes": "High-threat carries in the sample.",
+    "impact_carry_avg_distance_m": "Average length of completed threat carries.",
+    "passes_completed": "Total completed carries.",
 }
 
 TOOLTIP_EXTRA_KEYS: tuple[str, ...] = ("minutes", "passes_completed")
@@ -208,12 +208,20 @@ RANK_DISPLAY_KEYS: tuple[str, ...] = (
 
 TOOLTIP_LABELS: dict[str, str] = {
     **METRIC_LABELS,
-    "minutes": "Minutos em campo",
-    "passes_completed": "Conduções totais",
-    "minutes_pct": "Participação nos jogos",
-    "impact_passes": "Conduções que mudam o jogo",
-    "high_impact_passes": "Conduções decisivas",
-    "impact_carry_avg_distance_m": "Distância média das conduções de impacto",
+    "minutes": "Minutes played",
+    "passes_completed": "Total carries",
+    "minutes_pct": "Match participation",
+    "impact_passes": "Threat carries",
+    "high_impact_passes": "High-threat carries",
+    "impact_carry_avg_distance_m": "Avg. threat carry distance",
+}
+
+POSITION_GROUP_AVG_LABEL_EN: dict[str, str] = {
+    "Zagueiros": "Average - Center-backs",
+    "Laterais": "Average - Full-backs",
+    "Meio-campistas": "Average - Midfielders",
+    "Extremos": "Average - Wingers",
+    "Atacantes": "Average - Forwards",
 }
 
 
@@ -1290,8 +1298,8 @@ def build_position_average_player(group: str, pool: list[dict]) -> dict | None:
 
     base: dict = {
         "player_id": position_average_player_id(group),
-        "player_name": f"Média - {group}",
-        "team": "Posição",
+        "player_name": POSITION_GROUP_AVG_LABEL_EN.get(group, f"Average - {group}"),
+        "team": "Position",
         "position": group,
         "position_group": group,
         "is_position_average": True,

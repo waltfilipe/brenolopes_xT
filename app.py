@@ -1,4 +1,4 @@
-"""Condução & Drible — dashboard Brasileirão Série A."""
+"""Ball Carry & Dribble — Brasileirão Série A dashboard."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ rank_to_display_score = ce.rank_to_display_score
 score_display_color = ce.score_display_color
 rate_player_vs_eligible_pool = ce.rate_player_vs_eligible_pool
 
-from player_insights import build_headline_summary
+from player_insights import POSITION_GROUP_LABELS, build_headline_summary
 
 
 def fmt_rating_score(pass_rating) -> str:
@@ -48,7 +48,7 @@ def fmt_rating_score(pass_rating) -> str:
     return f"{float(pass_rating) * 10.0:.1f}"
 
 
-st.set_page_config(page_title="Condução & Drible", layout="wide")
+st.set_page_config(page_title="Ball Carry & Dribble", layout="wide")
 
 st.markdown(
     """
@@ -261,23 +261,23 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Condução & Drible — Brasileirão Série A")
-st.caption("Leitura simplificada de conduções e dribles. Passe o mouse nos nomes das métricas para ver o que significam.")
+st.title("Ball Carry & Dribble — Brasileirão Série A")
+st.caption("Simplified carry and dribble analytics. Hover metric names for definitions.")
 
 GLOSSARY_ITEMS: tuple[tuple[str, str], ...] = (
-    ("Nota geral", "Média das notas por métrica no grupo de posição (1º = 9,0 · mediano = 6,0 · último = 3,0)."),
-    ("Elite no Brasileirão", "Top ~10% do grupo de posição."),
-    ("Acima da média", "Melhor que a metade do grupo — até o top ~10% abaixo da elite."),
-    ("Na média do campeonato", "Faixa intermediária do grupo de posição."),
-    ("Abaixo da média", "Parte inferior do grupo de posição."),
-    ("Condução que muda o jogo", "Avanço relevante com a bola nos pés, medido por modelo de campo (xT)."),
-    ("Por jogo", "Valor ajustado por 90 minutos — facilita comparar quem jogou mais ou menos."),
-    ("Chegada à área", "Condução que termina dentro da grande área adversária."),
-    ("Drible certo no ataque", "1v1 vencido no terço final ofensivo."),
+    ("Overall rating", "Average of per-metric scores within the position group (1st = 9.0 · median = 6.0 · last = 3.0)."),
+    ("Elite in the league", "Top ~10% within the position group."),
+    ("Above average", "Better than half the group — up to just below elite."),
+    ("League average", "Middle tier within the position group."),
+    ("Below average", "Lower tier within the position group."),
+    ("Threat carry", "Meaningful progress with the ball, measured via pitch model (xT)."),
+    ("Per game", "Value adjusted per 90 minutes — easier to compare different playing time."),
+    ("Box entry", "Carry ending inside the opposition penalty area."),
+    ("Successful dribble", "1v1 won in the final third."),
 )
 
 LOCKED_DASHBOARD_PLAYER_NAME = "Breno Lopes"
-LOCKED_COMPARISON_AVG_LABEL = "Média - Extremos"
+LOCKED_COMPARISON_AVG_LABEL = "Average - Wingers"
 
 COMPARISON_METRIC_KEYS: tuple[str, ...] = (
     "carries_total",
@@ -395,14 +395,14 @@ def _events_for_player(
 def _rating_warnings_html(player: dict) -> str:
     warnings: list[str] = []
     if not player.get("eligible_minutes", True):
-        warnings.append("Menos de 30% dos minutos")
+        warnings.append("Under 30% of minutes")
     if not player.get("eligible_passes", True):
         min_carries = player.get("position_min_passes")
         if min_carries is not None:
             min_txt = fmt_stat_value("passes_completed", min_carries)
-            warnings.append(f"Menos de 30% das conduções da posição (mín. {min_txt})")
+            warnings.append(f"Under 30% of position carries (min. {min_txt})")
         else:
-            warnings.append("Menos de 30% das conduções da posição")
+            warnings.append("Under 30% of position carries")
     return "".join(
         '<span class="rating-warning-tip">'
         '<span class="rating-warning">⚠</span>'
@@ -443,10 +443,10 @@ def _metric_rank_subline(player: dict, metric_ranks: dict, key: str) -> str:
     if not info:
         return ""
     rank = int(info["rank"])
-    group = str(player.get("position_group") or "—")
+    group = POSITION_GROUP_LABELS.get(str(player.get("position_group") or "—"), str(player.get("position_group") or "—"))
     if rank == 1:
-        return f"Líder entre {group}"
-    return f"{rank}º entre {group}"
+        return f"Leader among {group}"
+    return f"{rank}th among {group}"
 
 
 def _headline_html(player: dict, metric_ranks: dict, *, highlight_leader: bool = False) -> str:
@@ -454,7 +454,7 @@ def _headline_html(player: dict, metric_ranks: dict, *, highlight_leader: bool =
     warnings = _rating_warnings_html(player)
     rank_line = summary["rank_line"]
     rank_cls = "headline-rank"
-    if highlight_leader and rank_line.startswith("Líder entre"):
+    if highlight_leader and rank_line.startswith("Leader among"):
         rank_cls += " headline-rank-leader"
     return (
         '<div class="headline-block">'
@@ -483,9 +483,9 @@ def _comparison_arrow_html(value, peer_value) -> str:
     if left is None or right is None:
         return ""
     if left > right:
-        return '<span class="cmp-arrow cmp-up" title="Acima do outro jogador">↑</span>'
+        return '<span class="cmp-arrow cmp-up" title="Above the other player">↑</span>'
     if left < right:
-        return '<span class="cmp-arrow cmp-down" title="Abaixo do outro jogador">↓</span>'
+        return '<span class="cmp-arrow cmp-down" title="Below the other player">↓</span>'
     return ""
 
 
@@ -521,7 +521,7 @@ def _metric_line_html(
             sub = _metric_rank_subline(player, metric_ranks, key)
             if sub:
                 sub_cls = "metric-rank-sub"
-                if highlight_leader and sub.startswith("Líder entre"):
+                if highlight_leader and sub.startswith("Leader among"):
                     sub_cls += " metric-rank-leader"
                 rank_sub = f'<div class="{sub_cls}">{html.escape(sub)}</div>'
     label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
@@ -619,7 +619,7 @@ def _rating_header_html(player: dict, metric_ranks: dict) -> str:
         if is_solo:
             rank_txt += " · individual"
         elif player.get("rating_is_compared"):
-            rank_txt += " · vs aptos"
+            rank_txt += " · vs eligible"
         rating_box = (
             f'<span class="rating-tip">'
             f'<div class="rating-box" style="background:{r_color};color:{r_txt};margin-bottom:0">'
@@ -661,28 +661,28 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
 
     with col_map1:
         if carries is None or carries.empty:
-            st.warning("Sem conduções para este jogador.")
+            st.warning("No carries for this player.")
         else:
             fig_all = draw_all_carries_map(carries, player_name, team_label, compact=False)
             st.pyplot(fig_all, clear_figure=True, use_container_width=True)
 
     with col_map2:
         if carries is None or carries.empty:
-            st.warning("Sem conduções de impacto para este jogador.")
+            st.warning("No threat carries for this player.")
         else:
             fig = draw_impact_pass_map(carries, player_name, team_label, compact=False)
             st.pyplot(fig, clear_figure=True, use_container_width=True)
 
     with col_map3:
         if dribbles is None or dribbles.empty:
-            st.info("Sem dribles com coordenadas para este jogador.")
+            st.info("No dribbles with coordinates for this player.")
         else:
             fig_drib = draw_dribble_map(dribbles, player_name, team_label, compact=False)
             st.pyplot(fig_drib, clear_figure=True, use_container_width=True)
 
     general_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
-            "Resumo",
+            "Summary",
             None,
             (
                 "minutes",
@@ -697,14 +697,14 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         ),
     ]
     abs_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
+        ("Carrying Threat (per game)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
     ]
     rel_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, True),
+        ("Carry Effectiveness", "metrics_relative", RELATIVE_METRIC_KEYS, True),
     ]
     general_carry_dribble_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
-            "Perigo no ataque",
+            "Final Third Threat",
             "general_carries_dribbles",
             GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
             True,
@@ -751,7 +751,7 @@ def _resolve_player(
 def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
     sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas", None, COMPARISON_METRIC_KEYS, False),
+        ("Metrics", None, COMPARISON_METRIC_KEYS, False),
     ]
     header = (
         '<div class="player-card player-info-card">'
@@ -778,7 +778,7 @@ def render_comparison_section(
     position_averages: list[dict],
     carries_by_player: dict,
 ) -> None:
-    st.subheader("Comparação lado a lado")
+    st.subheader("Side-by-side comparison")
 
     breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
     avg_player = next(
@@ -786,7 +786,7 @@ def render_comparison_section(
         None,
     )
     if not avg_player or not breno_id or breno_id not in players_by_id:
-        st.error("Não foi possível montar a comparação fixa (Média - Extremos e Breno Lopes).")
+        st.error("Could not load fixed comparison (Average - Wingers vs Breno Lopes).")
         return
 
     resolved: list[tuple[str, dict]] = [
@@ -811,7 +811,7 @@ def render_comparison_section(
 
         with col:
             if carries is None or carries.empty:
-                st.warning(f"Sem conduções de impacto para {player['player_name']}.")
+                st.warning(f"No threat carries for {player['player_name']}.")
             elif player.get("is_position_average"):
                 fig = draw_typical_impact_pass_map(
                     carries,
@@ -838,11 +838,11 @@ def render_map_section(
     carries_by_player: dict,
     dribbles_by_player: dict,
 ) -> None:
-    st.subheader("Mapas")
+    st.subheader("Maps")
 
     breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
     if not breno_id or breno_id not in players_by_id:
-        st.error(f"Jogador {LOCKED_DASHBOARD_PLAYER_NAME} não encontrado nos dados.")
+        st.error(f"Player {LOCKED_DASHBOARD_PLAYER_NAME} not found in the data.")
         return
 
     player_id = breno_id
@@ -860,23 +860,23 @@ def render_map_section(
 def render_impact_model_selector() -> str:
     options = list(IMPACT_MODEL_LABELS.keys())
     with st.sidebar:
-        st.markdown("### Modelo de impacto")
+        st.markdown("### Impact model")
         impact_model = st.selectbox(
-            "Classificação",
+            "Classification",
             options=options,
             format_func=lambda key: IMPACT_MODEL_LABELS[key],
             key=IMPACT_MODEL_SELECT_KEY,
             label_visibility="collapsed",
             help=(
-                "Atual: ganho relativo ΔxT/(1−xT) com limiares 0,30 / 0,62. "
-                "Opção 1 + via curta: ajusta limiares por distância e valoriza conduções curtas no terço final."
+                "Current: relative gain ΔxT/(1−xT) with thresholds 0.30 / 0.62. "
+                "Option 1 + short lane: distance-adjusted thresholds and short final-third carries."
             ),
         )
     return impact_model
 
 
 def render_glossary() -> None:
-    with st.expander("O que significam essas métricas?"):
+    with st.expander("What do these metrics mean?"):
         for title, body in GLOSSARY_ITEMS:
             st.markdown(f"**{title}** — {body}")
 
@@ -885,7 +885,7 @@ def main() -> None:
     render_glossary()
     impact_model = render_impact_model_selector()
 
-    with st.spinner("Carregando dados…"):
+    with st.spinner("Loading data…"):
         _, all_players = load_analytics(impact_model=impact_model)
         carries_by_player = load_carries(impact_model=impact_model)
         dribbles_by_player = load_dribbles(impact_model=impact_model)
@@ -895,7 +895,7 @@ def main() -> None:
     for avg_player in position_averages:
         players_by_id[avg_player["player_id"]] = avg_player
 
-    tab_dashboard, tab_comparison = st.tabs(["Dashboard", "Comparação"])
+    tab_dashboard, tab_comparison = st.tabs(["Dashboard", "Comparison"])
 
     with tab_dashboard:
         render_map_section(

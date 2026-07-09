@@ -84,7 +84,7 @@ def _attack_arrow(fig, *, fig_w: float) -> None:
     fig.text(
         0.50,
         0.012,
-        "Direção de ataque",
+        "Attack direction",
         ha="center",
         va="bottom",
         transform=fig.transFigure,
@@ -134,7 +134,7 @@ def draw_all_carries_map(
     fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
 
     if subset.empty:
-        ax.text(60, 40, "Sem conduções", ha="center", va="center", color="white", fontsize=9)
+        ax.text(60, 40, "No carries", ha="center", va="center", color="white", fontsize=9)
     else:
         for row in subset.itertuples(index=False):
             _delicate_arrows(
@@ -149,12 +149,12 @@ def draw_all_carries_map(
             )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_CARRY, lw=1.4 * scale, label="Condução", alpha=0.80),
+        Line2D([0], [0], color=COLOR_CARRY, lw=1.4 * scale, label="Carry", alpha=0.80),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_CARRY,
-               markersize=4, linestyle="None", label="Origem da condução"),
+               markersize=4, linestyle="None", label="Carry origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Todas as conduções")
+    _finish_map(fig, ax, fig_w=fig_w, title="All carries")
     return fig
 
 
@@ -179,7 +179,7 @@ def draw_impact_pass_map(
     fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
 
     if subset.empty:
-        ax.text(60, 40, "Sem conduções de impacto", ha="center", va="center", color="white", fontsize=9)
+        ax.text(60, 40, "No threat carries", ha="center", va="center", color="white", fontsize=9)
     else:
         for row in subset.itertuples(index=False):
             is_high = bool(row.high_impact_success)
@@ -200,13 +200,13 @@ def draw_impact_pass_map(
             )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Impacto", alpha=0.80),
-        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="Alto impacto", alpha=0.85),
+        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Threat", alpha=0.80),
+        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="High threat", alpha=0.85),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_PROGRESSIVE,
-               markersize=4, linestyle="None", label="Origem"),
+               markersize=4, linestyle="None", label="Origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Conduções de impacto")
+    _finish_map(fig, ax, fig_w=fig_w, title="Threat carries")
     return fig
 
 
@@ -270,7 +270,7 @@ def draw_typical_impact_pass_map(
     fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
 
     if not vectors:
-        ax.text(60, 40, "Sem conduções de impacto", ha="center", va="center", color="white", fontsize=9)
+        ax.text(60, 40, "No threat carries", ha="center", va="center", color="white", fontsize=9)
     else:
         max_count = max(v["count"] for v in vectors)
         for vector in vectors:
@@ -291,13 +291,13 @@ def draw_typical_impact_pass_map(
             )
 
     legend_handles = [
-        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Padrão frequente", alpha=0.80),
-        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="Padrão de alto impacto", alpha=0.85),
+        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Common pattern", alpha=0.80),
+        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="High-threat pattern", alpha=0.85),
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_PROGRESSIVE,
-               markersize=4, linestyle="None", label="Origem típica"),
+               markersize=4, linestyle="None", label="Typical origin"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Padrões típicos de condução de impacto")
+    _finish_map(fig, ax, fig_w=fig_w, title="Typical threat carry patterns")
     return fig
 
 
@@ -325,7 +325,7 @@ def draw_dribble_map(
     fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
 
     if dribbles is None or dribbles.empty:
-        ax.text(60, 40, "Sem dribles", ha="center", va="center", color="white", fontsize=9)
+        ax.text(60, 40, "No dribbles", ha="center", va="center", color="white", fontsize=9)
     else:
         ok = dribbles[dribbles["is_success"]]
         fail = dribbles[~dribbles["is_success"]]
@@ -344,12 +344,12 @@ def draw_dribble_map(
 
     legend_handles = [
         Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_DRIBBLE_OK,
-               markersize=5, linestyle="None", label="Drible certo"),
+               markersize=5, linestyle="None", label="Successful dribble"),
         Line2D([0], [0], marker="x", color=COLOR_DRIBBLE_FAIL, markersize=5,
-               linestyle="None", label="Drible falho"),
+               linestyle="None", label="Failed dribble"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w, title="Dribles")
+    _finish_map(fig, ax, fig_w=fig_w, title="Dribbles")
     return fig
 
 
@@ -416,6 +416,6 @@ def draw_pass_destination_heatmap(
     cbar.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}" if v == int(v) else f"{v:.1f}"))
     cbar.ax.yaxis.set_tick_params(color="#ffffff", labelsize=6)
     plt.setp(cbar.ax.axes.get_yticklabels(), color="#ffffff")
-    cbar.set_label("Conduções impact", color="#c7cdda", fontsize=7 * scale)
-    _finish_map(fig, ax, fig_w=fig_w, title="Destino — conduções de impacto")
+    cbar.set_label("Threat carries", color="#c7cdda", fontsize=7 * scale)
+    _finish_map(fig, ax, fig_w=fig_w, title="Threat carry destinations")
     return fig

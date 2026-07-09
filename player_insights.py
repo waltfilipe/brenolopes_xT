@@ -8,21 +8,21 @@ if TYPE_CHECKING:
     pass
 
 POSITION_GROUP_LABELS: dict[str, str] = {
-    "Zagueiros": "zagueiros",
-    "Laterais": "laterais",
-    "Meio-campistas": "meio-campistas",
-    "Extremos": "extremos",
-    "Atacantes": "atacantes",
+    "Zagueiros": "center-backs",
+    "Laterais": "full-backs",
+    "Meio-campistas": "midfielders",
+    "Extremos": "wingers",
+    "Atacantes": "forwards",
 }
 
 INSIGHT_METRICS: tuple[tuple[str, str], ...] = (
-    ("impact_passes_p90", "Conduções que mudam o jogo"),
-    ("phi_p90", "Conduções decisivas"),
-    ("dxt_p90", "Progressão com a bola"),
-    ("carries_to_box_p90", "Chegadas à área"),
-    ("carries_impact_to_box_p90", "Chegadas de impacto à área"),
-    ("dribbles_final_third_p90", "Dribles certos no ataque"),
-    ("dxt_gt_015_pct", "Conduções de alto avanço"),
+    ("impact_passes_p90", "Threat Carries"),
+    ("phi_p90", "High-Threat Carries"),
+    ("dxt_p90", "Carry Threat"),
+    ("carries_to_box_p90", "Box Entries"),
+    ("carries_impact_to_box_p90", "Threat Box Entries"),
+    ("dribbles_final_third_p90", "Successful Dribbles"),
+    ("dxt_gt_015_pct", "% High-Threat Carries"),
 )
 
 
@@ -48,21 +48,21 @@ def rating_band_text(
     if rank is not None and total is not None and total > 1:
         t = (rank - 1) / (total - 1)
         if t <= 0.10:
-            return "Elite no Brasileirão"
+            return "Elite in the league"
         if t <= 0.45:
-            return "Acima da média"
+            return "Above average"
         if t <= 0.72:
-            return "Na média do campeonato"
-        return "Abaixo da média"
+            return "League average"
+        return "Below average"
     if display_score is None:
-        return "Sem nota"
+        return "No rating"
     if display_score >= 8.0:
-        return "Elite no Brasileirão"
+        return "Elite in the league"
     if display_score >= 7.0:
-        return "Acima da média"
+        return "Above average"
     if display_score >= 6.0:
-        return "Na média do campeonato"
-    return "Abaixo da média"
+        return "League average"
+    return "Below average"
 
 
 def _rank_percentile(rank: int, total: int) -> float:
@@ -74,19 +74,19 @@ def _rank_percentile(rank: int, total: int) -> float:
 def _position_phrase(player: dict) -> str:
     group = str(player.get("position_group") or "—")
     label = POSITION_GROUP_LABELS.get(group, group.lower())
-    return f"{label} do Brasileirão"
+    return f"{label} in the league"
 
 
 def build_rank_line(player: dict, metric_ranks: dict) -> str:
     info = metric_ranks.get("pass_rating")
     if not info:
-        return "Comparativo individual (sem grupo elegível)"
+        return "Individual comparison (no eligible peer group)"
     rank = int(info["rank"])
     total = int(info["total"])
     position = _position_phrase(player)
     if rank == 1:
-        return f"Líder entre {position}"
-    return f"{rank}º entre {total} {position}"
+        return f"Leader among {position}"
+    return f"{rank}th of {total} {position}"
 
 
 def _metric_rank(player: dict, metric_ranks: dict, key: str) -> tuple[int, int] | None:
@@ -105,9 +105,9 @@ def build_profile_line(player: dict, metric_ranks: dict) -> str:
     drib_rank = _metric_rank(player, metric_ranks, "dribbles_final_third_p90")
 
     if impact_rank and impact_rank[0] <= max(3, impact_rank[1] // 5):
-        parts.append("conduz muito com perigo")
+        parts.append("carries with high threat")
     elif quality_rank and quality_rank[0] <= max(3, quality_rank[1] // 5):
-        parts.append("conduz com alta qualidade")
+        parts.append("high carry effectiveness")
 
     if box_rank and drib_rank:
         box_good = _rank_percentile(box_rank[0], box_rank[1]) <= 0.35
@@ -116,22 +116,22 @@ def build_profile_line(player: dict, metric_ranks: dict) -> str:
         drib_weak = _rank_percentile(drib_rank[0], drib_rank[1]) >= 0.65
 
         if box_good and drib_weak:
-            parts.append("chega bem à área, dribla pouco no ataque")
+            parts.append("reaches the box well, dribbles less in attack")
         elif drib_good and box_weak:
-            parts.append("dribla no ataque, chega menos à área")
+            parts.append("dribbles in attack, reaches the box less")
         elif box_good and drib_good:
-            parts.append("chega à área e dribla perto do gol")
+            parts.append("reaches the box and dribbles near goal")
         elif box_weak and drib_weak:
-            parts.append("menos presença na área e nos dribles no ataque")
+            parts.append("less presence in the box and in attacking dribbles")
 
     if not parts:
         carries = player.get("carries_total") or 0
         if carries >= 100:
-            parts.append("participa bastante com a bola nos pés")
+            parts.append("high involvement in possession")
         else:
-            parts.append("perfil equilibrado nas conduções")
+            parts.append("balanced carry profile")
 
-    return "Perfil: " + ", ".join(parts) + "."
+    return "Profile: " + ", ".join(parts) + "."
 
 
 def build_player_insights(player: dict, metric_ranks: dict, *, max_items: int = 3) -> list[tuple[str, str]]:
@@ -149,12 +149,12 @@ def build_player_insights(player: dict, metric_ranks: dict, *, max_items: int = 
             continue
         pct = _rank_percentile(rank, total)
         value_txt = _fmt_stat_value(key, player.get(key))
-        line = f"{short_label}: {value_txt} ({rank}º entre {total})"
+        line = f"{short_label}: {value_txt} ({rank}th of {total})"
 
         if pct <= 0.20:
-            strong.append((pct, f"Forte — {line}"))
+            strong.append((pct, f"Strength — {line}"))
         elif pct >= 0.80:
-            develop.append((-pct, f"A desenvolver — {line}"))
+            develop.append((-pct, f"To develop — {line}"))
 
     insights: list[tuple[str, str]] = []
     for _, text in sorted(strong, key=lambda item: item[0])[:max_items]:
@@ -165,7 +165,7 @@ def build_player_insights(player: dict, metric_ranks: dict, *, max_items: int = 
             insights.append(("develop", text))
 
     if not insights:
-        insights.append(("neutral", "Desempenho equilibrado entre as métricas do grupo."))
+        insights.append(("neutral", "Balanced performance across group metrics."))
     return insights
 
 
