@@ -29,19 +29,24 @@ ARROW_HEADLENGTH = 1.15
 ARROW_ALPHA_EMPH = 0.82
 PASS_START_MARKER_SIZE = 7
 
-# Map chrome — sizes scale with figure width (reference: FIG_W).
-MAP_TITLE_FONT_SCALE = 0.86
-MAP_TITLE_FONT_MIN = 7.5
-MAP_TITLE_FONT_MAX = 9.0
-MAP_TITLE_PAD = 4
-ATTACK_ARROW_SPAN_SCALE = 0.032
-ATTACK_ARROW_Y = 0.042
-ATTACK_LABEL_Y = 0.014
-ATTACK_ARROW_MUTATION = 9.0
-ATTACK_ARROW_LW = 1.1
-ATTACK_LABEL_FONT_SCALE = 0.68
-MAP_MARGIN_TOP = 0.935
-MAP_MARGIN_BOTTOM = 0.075
+# Map chrome — title above pitch, attack indicator in footer strip below pitch.
+MAP_TITLE_FONT_FULL = 11.5
+MAP_TITLE_FONT_COMPACT = 10.0
+MAP_TITLE_PAD_FULL = 10
+MAP_TITLE_PAD_COMPACT = 7
+MAP_MARGIN_TOP_FULL = 0.875
+MAP_MARGIN_TOP_COMPACT = 0.895
+MAP_MARGIN_BOTTOM_FULL = 0.115
+MAP_MARGIN_BOTTOM_COMPACT = 0.105
+ATTACK_ACCENT_COLOR = "#7eb6ff"
+ATTACK_ARROW_SPAN_RATIO = 0.058
+ATTACK_FOOTER_GAP = 0.007
+ATTACK_ARROW_MUTATION_FULL = 12.0
+ATTACK_ARROW_MUTATION_COMPACT = 10.0
+ATTACK_ARROW_LW_FULL = 1.45
+ATTACK_ARROW_LW_COMPACT = 1.25
+ATTACK_LABEL_FONT_FULL = 9.0
+ATTACK_LABEL_FONT_COMPACT = 8.0
 
 COLOR_CARRY = "#94a3b8"
 COLOR_PROGRESSIVE = "#7dd3fc"
@@ -82,64 +87,66 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(fig, *, fig_w: float) -> None:
-    scale = _map_scale(fig_w)
-    center_x = 0.5
-    half_span = ATTACK_ARROW_SPAN_SCALE * scale
-    label_fs = max(6.0, min(7.5, ATTACK_LABEL_FONT_SCALE * scale * 10.0))
+def _attack_arrow(fig, ax, *, compact: bool) -> None:
+    pos = ax.get_position()
+    center_x = pos.x0 + pos.width * 0.5
+    half_span = pos.width * ATTACK_ARROW_SPAN_RATIO
+    arrow_y = pos.y0 - ATTACK_FOOTER_GAP - 0.009
+    label_y = max(0.016, arrow_y - 0.021)
+
+    mutation = ATTACK_ARROW_MUTATION_COMPACT if compact else ATTACK_ARROW_MUTATION_FULL
+    lw = ATTACK_ARROW_LW_COMPACT if compact else ATTACK_ARROW_LW_FULL
+    label_fs = ATTACK_LABEL_FONT_COMPACT if compact else ATTACK_LABEL_FONT_FULL
 
     fig.patches.append(
         FancyArrowPatch(
-            (center_x - half_span, ATTACK_ARROW_Y),
-            (center_x + half_span, ATTACK_ARROW_Y),
+            (center_x - half_span, arrow_y),
+            (center_x + half_span, arrow_y),
             transform=fig.transFigure,
             arrowstyle="-|>",
-            mutation_scale=ATTACK_ARROW_MUTATION * scale,
-            linewidth=ATTACK_ARROW_LW * scale,
-            color="#8fa3bf",
+            mutation_scale=mutation,
+            linewidth=lw,
+            color=ATTACK_ACCENT_COLOR,
+            alpha=0.92,
             clip_on=False,
         )
     )
     fig.text(
         center_x,
-        ATTACK_LABEL_Y,
+        label_y,
         "Attack direction",
         ha="center",
-        va="bottom",
+        va="top",
         transform=fig.transFigure,
         fontsize=label_fs,
-        color="#8fa3bf",
+        color=ATTACK_ACCENT_COLOR,
+        alpha=0.95,
     )
 
 
 def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> None:
-    scale = _map_scale(fig_w)
-    if compact:
-        scale *= 0.92
-    title_fs = max(
-        MAP_TITLE_FONT_MIN,
-        min(MAP_TITLE_FONT_MAX, MAP_TITLE_FONT_SCALE * scale * 10.0),
-    )
+    title_fs = MAP_TITLE_FONT_COMPACT if compact else MAP_TITLE_FONT_FULL
+    title_pad = MAP_TITLE_PAD_COMPACT if compact else MAP_TITLE_PAD_FULL
     if len(title) > 26:
-        title_fs -= 0.6
+        title_fs -= 0.75
 
     ax.set_title(
         title,
-        color="#e2e8f0",
+        color="#f1f5f9",
         fontsize=title_fs,
-        fontweight=600,
-        pad=MAP_TITLE_PAD,
+        fontweight="bold",
+        pad=title_pad,
         loc="left",
-        x=0.02,
+        x=0.015,
         y=1.0,
     )
     fig.subplots_adjust(
         left=0.0,
         right=1.0,
-        top=MAP_MARGIN_TOP,
-        bottom=MAP_MARGIN_BOTTOM,
+        top=MAP_MARGIN_TOP_COMPACT if compact else MAP_MARGIN_TOP_FULL,
+        bottom=MAP_MARGIN_BOTTOM_COMPACT if compact else MAP_MARGIN_BOTTOM_FULL,
     )
-    _attack_arrow(fig, fig_w=fig_w)
+    _attack_arrow(fig, ax, compact=compact)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
