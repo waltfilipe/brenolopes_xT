@@ -744,8 +744,7 @@ def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
         '<div class="player-card player-info-card">'
         f"<h3>{html.escape(player['player_name'])}</h3>"
         f'<div class="sub">{html.escape(player.get("team", "—"))} · '
-        f"{html.escape(str(player.get("position", "—")))} · "
-        f'{html.escape(str(player.get("position_group", "—")))}</div>'
+        f'{html.escape(str(player.get("position", "—")))}</div>'
         f"{_headline_html(player, metric_ranks)}"
     )
     body = _build_sections_html(
