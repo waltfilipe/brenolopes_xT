@@ -123,22 +123,18 @@ st.markdown(
         font-size: 0.88rem;
         font-weight: 700;
     }
-    .headline-rank {
-        color: #cbd5e1;
-        font-size: 0.88rem;
-        margin-bottom: 0.35rem;
+    .cmp-arrow {
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1;
     }
+    .cmp-up { color: #22c55e; }
+    .cmp-down { color: #ef4444; }
     .metric-label-block {
         display: flex;
         flex-direction: column;
         gap: 0.12rem;
         min-width: 0;
-    }
-    .metric-rank-sub {
-        color: #64748b;
-        font-size: 0.74rem;
-        font-weight: 600;
-        line-height: 1.2;
     }
     .metric-tip {
         position: relative;
@@ -272,6 +268,7 @@ COMPARISON_METRIC_KEYS: tuple[str, ...] = (
     "carries_total",
     "impact_passes",
     "high_impact_passes",
+    "impact_carry_avg_distance_m",
     *ABSOLUTE_METRIC_KEYS,
     *RELATIVE_METRIC_KEYS,
     *GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
@@ -447,17 +444,6 @@ def _label_html(key: str) -> str:
     )
 
 
-def _metric_rank_subline(player: dict, metric_ranks: dict, key: str) -> str:
-    info = metric_ranks.get(key)
-    if not info:
-        return ""
-    rank = int(info["rank"])
-    group = str(player.get("position_group") or "—")
-    if rank == 1:
-        return f"Líder entre {group}"
-    return f"{rank}º entre {group}"
-
-
 def _headline_html(player: dict, metric_ranks: dict) -> str:
     summary = build_headline_summary(player, metric_ranks)
     warnings = _rating_warnings_html(player)
@@ -467,10 +453,30 @@ def _headline_html(player: dict, metric_ranks: dict) -> str:
         f'<span class="headline-score">{html.escape(summary["score"])}</span>'
         f'<span class="headline-band">{html.escape(summary["band"])}</span>'
         f"</div>"
-        f'<div class="headline-rank">{html.escape(summary["rank_line"])}</div>'
         f'{warnings}'
         "</div>"
     )
+
+
+def _metric_numeric_value(value) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _comparison_arrow_html(value, peer_value) -> str:
+    left = _metric_numeric_value(value)
+    right = _metric_numeric_value(peer_value)
+    if left is None or right is None:
+        return ""
+    if left > right:
+        return '<span class="cmp-arrow cmp-up" title="Acima do outro jogador">↑</span>'
+    if left < right:
+        return '<span class="cmp-arrow cmp-down" title="Abaixo do outro jogador">↓</span>'
+    return ""
 
 
 def _metric_line_html(
@@ -480,31 +486,16 @@ def _metric_line_html(
     metric_ranks: dict,
     player: dict,
     *,
-    show_rank: bool = True,
+    show_rank: bool = False,
     use_tooltip_label: bool = True,
+    peer: dict | None = None,
 ) -> str:
     label_html = _label_html(key) if use_tooltip_label else html.escape(label)
-    rank_sub = ""
-    badge = ""
-    if show_rank:
-        info = metric_ranks.get(key)
-        if info:
-            rank = int(info["rank"])
-            total = int(info["total"])
-            color = rank_color(rank, total)
-            badge = (
-                f'<span class="rank-tip">'
-                f'<span class="rank-badge" style="background:{color}"></span>'
-                f'<span class="rank-tipbox">{rank}/{total}</span>'
-                f"</span>"
-            )
-        sub = _metric_rank_subline(player, metric_ranks, key)
-        if sub:
-            rank_sub = f'<div class="metric-rank-sub">{html.escape(sub)}</div>'
-    label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
+    label_block = f'<div class="metric-label-block">{label_html}</div>'
+    arrow = _comparison_arrow_html(player.get(key), peer.get(key) if peer else None) if peer else ""
     value_html = (
-        f'<span class="val-wrap">{badge}<span class="stat-val">{html.escape(value)}</span></span>'
-        if badge
+        f'<span class="val-wrap">{arrow}<span class="stat-val">{html.escape(value)}</span></span>'
+        if arrow
         else f'<span class="stat-val">{html.escape(value)}</span>'
     )
     return (
@@ -517,25 +508,16 @@ def _metric_line_html(
 
 def _section_header_html(title: str, section_key: str, player: dict) -> str:
     section_ratings = player.get("section_ratings") if isinstance(player.get("section_ratings"), dict) else {}
-    section_rank_info = player.get("section_rating_ranks") if isinstance(player.get("section_rating_ranks"), dict) else {}
     score = section_ratings.get(section_key)
     pill = ""
     if score is not None:
         txt = fmt_rating_score(score)
-        rank_info = section_rank_info.get(section_key)
-        if rank_info:
-            color = rank_color(int(rank_info["rank"]), int(rank_info["total"]))
-            txt_color = _badge_text_color(color)
-            rank_txt = f'{int(rank_info["rank"])}/{int(rank_info["total"])}'
-            pill = (
-                f'<span class="section-rating-tip">'
-                f'<span class="section-rating-pill" style="background:{color};color:{txt_color}">'
-                f"{html.escape(txt)}</span>"
-                f'<span class="rating-tipbox">{rank_txt}</span>'
-                f"</span>"
-            )
-        else:
-            pill = f'<span class="section-rating-pill">{html.escape(txt)}</span>'
+        color = rating_value_color(score)
+        txt_color = _badge_text_color(color)
+        pill = (
+            f'<span class="section-rating-pill" style="background:{color};color:{txt_color}">'
+            f"{html.escape(txt)}</span>"
+        )
     return (
         '<div class="stat-section-row">'
         f'<span class="stat-section">{html.escape(title)}</span>'
@@ -548,6 +530,8 @@ def _build_sections_html(
     player: dict,
     metric_ranks: dict,
     sections: list[tuple[str, str | None, tuple[str, ...], bool]],
+    *,
+    peer: dict | None = None,
 ) -> str:
     parts: list[str] = []
     for title, section_key, keys, show_rank in sections:
@@ -566,6 +550,7 @@ def _build_sections_html(
                     metric_ranks,
                     player,
                     show_rank=show_rank,
+                    peer=peer,
                 )
             )
     return "".join(parts)
@@ -659,17 +644,17 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         ),
     ]
     abs_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, True),
+        ("Volume ofensivo (por jogo)", "metrics_absolute", ABSOLUTE_METRIC_KEYS, False),
     ]
     rel_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, True),
+        ("Qualidade nas conduções", "metrics_relative", RELATIVE_METRIC_KEYS, False),
     ]
     general_carry_dribble_sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
         (
             "Perigo no ataque",
             "general_carries_dribbles",
             GENERAL_CARRIES_DRIBBLES_METRIC_KEYS,
-            True,
+            False,
         ),
     ]
 
@@ -705,10 +690,10 @@ def _resolve_player(
     return resolved
 
 
-def _comparison_stats_card(player: dict) -> str:
+def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
     sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas", None, COMPARISON_METRIC_KEYS, True),
+        ("Métricas", None, COMPARISON_METRIC_KEYS, False),
     ]
     header = (
         '<div class="player-card player-info-card">'
@@ -718,7 +703,7 @@ def _comparison_stats_card(player: dict) -> str:
         f'{html.escape(str(player.get("position_group", "—")))}</div>'
         f"{_headline_html(player, metric_ranks)}"
     )
-    body = _build_sections_html(player, metric_ranks, sections)
+    body = _build_sections_html(player, metric_ranks, sections, peer=peer)
     return header + body + "</div>"
 
 
@@ -753,10 +738,18 @@ def render_comparison_section(
         st.info("Selecione exatamente dois jogadores para comparar.")
         return
 
-    col_left, col_right = st.columns(2, gap="medium")
-    for col, label in zip((col_left, col_right), selected_labels):
+    resolved: list[tuple[str, dict]] = []
+    for label in selected_labels:
         player_id = id_by_label[label]
         player = _resolve_player(dict(players_by_id[player_id]), pool_by_position)
+        resolved.append((player_id, player))
+
+    col_left, col_right = st.columns(2, gap="medium")
+    for col, (player_id, player), (_, peer) in zip(
+        (col_left, col_right),
+        resolved,
+        (resolved[1], resolved[0]),
+    ):
         carries = carries_by_player.get(player_id)
         team_label = player.get("team", "—")
 
@@ -771,7 +764,7 @@ def render_comparison_section(
                     compact=False,
                 )
                 st.pyplot(fig, clear_figure=True, use_container_width=True)
-            st.markdown(_comparison_stats_card(player), unsafe_allow_html=True)
+            st.markdown(_comparison_stats_card(player, peer), unsafe_allow_html=True)
 
 
 def render_map_section(

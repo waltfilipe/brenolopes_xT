@@ -33,7 +33,7 @@ except ImportError:
 # ── Paths & eligibility ─────────────────────────────────────────────────────
 SEASON_ALL_CSV_PATH = Path(__file__).resolve().parent / "season_carries_dribbles.csv"
 PLAYER_MATCH_STATS_PATH = Path(__file__).resolve().parent / "player_match_stats.csv"
-DATA_CACHE_VERSION = 29
+DATA_CACHE_VERSION = 30
 
 CARRY_CATEGORIES = frozenset({"ball-carries", "dribbles"})
 
@@ -170,6 +170,7 @@ METRIC_TOOLTIPS: dict[str, str] = {
     "minutes_pct": "Percentual de jogos disputados pelo time em que entrou.",
     "impact_passes": "Conduções que mudam o jogo na temporada.",
     "high_impact_passes": "Conduções decisivas na temporada.",
+    "impact_carry_avg_distance_m": "Comprimento médio das conduções de impacto completadas.",
     "passes_completed": "Total de conduções completadas.",
 }
 
@@ -212,6 +213,7 @@ TOOLTIP_LABELS: dict[str, str] = {
     "minutes_pct": "Participação nos jogos",
     "impact_passes": "Conduções que mudam o jogo",
     "high_impact_passes": "Conduções decisivas",
+    "impact_carry_avg_distance_m": "Distância média das conduções de impacto",
 }
 
 
@@ -872,6 +874,12 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
     box_mask = _ended_in_penalty_box(passes)
     carries_to_box = int(box_mask.sum())
     carries_impact_to_box = int((box_mask & passes["impact_success"]).sum())
+    impact_carries = passes[passes["impact_success"] & passes["has_end"]]
+    impact_carry_avg_distance_m = (
+        round(float(impact_carries["pass_distance"].mean()), 1)
+        if len(impact_carries)
+        else None
+    )
 
     return {
         "passes_total": total,
@@ -890,6 +898,7 @@ def _pass_layer_metrics(passes: pd.DataFrame) -> dict:
         "carries_to_box": carries_to_box,
         "carries_impact_to_box": carries_impact_to_box,
         "progressive_passes": progressive_passes,
+        "impact_carry_avg_distance_m": impact_carry_avg_distance_m,
     }
 
 
@@ -1432,6 +1441,8 @@ def fmt_stat_value(key: str, value) -> str:
         return f"{float(value):.{fixed_decimals[key]}f}"
     if key.endswith("_pct"):
         return f"{fmt_smart(value)}%"
+    if key == "impact_carry_avg_distance_m":
+        return f"{float(value):.1f} m"
     if key in {
         "minutes", "passes_completed", "impact_passes", "high_impact_passes",
         "carries_total", "dribbles_total",
