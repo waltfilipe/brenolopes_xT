@@ -32,14 +32,15 @@ PASS_START_MARKER_SIZE = 7
 # Map chrome — dedicated header/footer bands (figure coords), separate from pitch.
 MAP_HEADER_FRAC_FULL = 0.098
 MAP_HEADER_FRAC_COMPACT = 0.088
-MAP_FOOTER_FRAC_FULL = 0.112
-MAP_FOOTER_FRAC_COMPACT = 0.100
+MAP_FOOTER_FRAC_FULL = 0.135
+MAP_FOOTER_FRAC_COMPACT = 0.118
 MAP_TITLE_FONT_FULL = 13.5
 MAP_TITLE_FONT_COMPACT = 11.5
-ATTACK_ACCENT_COLOR = "#93c5fd"
+ATTACK_ARROW_COLOR = "#93c5fd"
+ATTACK_LABEL_COLOR = "#94a3b8"
 ATTACK_ARROW_SPAN_FIG = 0.048
-ATTACK_ARROW_Y_RATIO = 0.62
-ATTACK_LABEL_Y_RATIO = 0.24
+ATTACK_ARROW_Y_RATIO = 0.46
+ATTACK_LABEL_Y_RATIO = 0.15
 ATTACK_ARROW_MUTATION_FULL = 14.0
 ATTACK_ARROW_MUTATION_COMPACT = 11.5
 ATTACK_ARROW_LW_FULL = 1.55
@@ -105,7 +106,7 @@ def _attack_arrow(fig, ax, *, compact: bool, footer_frac: float) -> None:
             arrowstyle="-|>",
             mutation_scale=mutation,
             linewidth=lw,
-            color=ATTACK_ACCENT_COLOR,
+            color=ATTACK_ARROW_COLOR,
             alpha=0.95,
             clip_on=False,
         )
@@ -118,7 +119,7 @@ def _attack_arrow(fig, ax, *, compact: bool, footer_frac: float) -> None:
         va="center",
         transform=fig.transFigure,
         fontsize=label_fs,
-        color=ATTACK_ACCENT_COLOR,
+        color=ATTACK_LABEL_COLOR,
         alpha=0.98,
         fontweight=500,
     )
@@ -139,14 +140,14 @@ def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> 
     )
 
     fig.text(
-        0.018,
+        0.5,
         1.0 - header_frac * 0.48,
         title,
         transform=fig.transFigure,
         fontsize=title_fs,
         fontweight="bold",
         color="#f8fafc",
-        ha="left",
+        ha="center",
         va="center",
     )
     _attack_arrow(fig, ax, compact=compact, footer_frac=footer_frac)
