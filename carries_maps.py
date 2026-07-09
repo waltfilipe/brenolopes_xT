@@ -29,6 +29,20 @@ ARROW_HEADLENGTH = 1.15
 ARROW_ALPHA_EMPH = 0.82
 PASS_START_MARKER_SIZE = 7
 
+# Map chrome — sizes scale with figure width (reference: FIG_W).
+MAP_TITLE_FONT_SCALE = 0.86
+MAP_TITLE_FONT_MIN = 7.5
+MAP_TITLE_FONT_MAX = 9.0
+MAP_TITLE_PAD = 4
+ATTACK_ARROW_SPAN_SCALE = 0.032
+ATTACK_ARROW_Y = 0.042
+ATTACK_LABEL_Y = 0.014
+ATTACK_ARROW_MUTATION = 9.0
+ATTACK_ARROW_LW = 1.1
+ATTACK_LABEL_FONT_SCALE = 0.68
+MAP_MARGIN_TOP = 0.935
+MAP_MARGIN_BOTTOM = 0.075
+
 COLOR_CARRY = "#94a3b8"
 COLOR_PROGRESSIVE = "#7dd3fc"
 COLOR_HIGHLY_PROGRESSIVE = "#fcd34d"
@@ -68,57 +82,64 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(fig, ax, *, compact: bool) -> None:
-    pos = ax.get_position()
-    arrow_y = pos.y0 - 0.012
-    label_y = pos.y0 - 0.034
-    center_x = pos.x0 + pos.width / 2
-    half_span = (0.045 if compact else 0.055) * min(pos.width / 0.88, 1.15)
+def _attack_arrow(fig, *, fig_w: float) -> None:
+    scale = _map_scale(fig_w)
+    center_x = 0.5
+    half_span = ATTACK_ARROW_SPAN_SCALE * scale
+    label_fs = max(6.0, min(7.5, ATTACK_LABEL_FONT_SCALE * scale * 10.0))
 
     fig.patches.append(
         FancyArrowPatch(
-            (center_x - half_span, arrow_y),
-            (center_x + half_span, arrow_y),
+            (center_x - half_span, ATTACK_ARROW_Y),
+            (center_x + half_span, ATTACK_ARROW_Y),
             transform=fig.transFigure,
             arrowstyle="-|>",
-            mutation_scale=12 if compact else 15,
-            linewidth=1.25 if compact else 1.55,
-            color="#9aa8bc",
+            mutation_scale=ATTACK_ARROW_MUTATION * scale,
+            linewidth=ATTACK_ARROW_LW * scale,
+            color="#8fa3bf",
             clip_on=False,
         )
     )
     fig.text(
         center_x,
-        label_y,
+        ATTACK_LABEL_Y,
         "Attack direction",
         ha="center",
-        va="top",
+        va="bottom",
         transform=fig.transFigure,
-        fontsize=7.0 if compact else 8.25,
-        color="#9aa8bc",
-        fontweight=500,
+        fontsize=label_fs,
+        color="#8fa3bf",
     )
 
 
 def _finish_map(fig, ax, *, fig_w: float, title: str, compact: bool = False) -> None:
-    title_fs = 8.25 if compact else 10.25
-    if len(title) > 24:
-        title_fs -= 0.85 if compact else 1.0
+    scale = _map_scale(fig_w)
+    if compact:
+        scale *= 0.92
+    title_fs = max(
+        MAP_TITLE_FONT_MIN,
+        min(MAP_TITLE_FONT_MAX, MAP_TITLE_FONT_SCALE * scale * 10.0),
+    )
+    if len(title) > 26:
+        title_fs -= 0.6
+
     ax.set_title(
         title,
-        color="#f1f5f9",
+        color="#e2e8f0",
         fontsize=title_fs,
         fontweight=600,
-        pad=6 if compact else 10,
-        loc="center",
+        pad=MAP_TITLE_PAD,
+        loc="left",
+        x=0.02,
+        y=1.0,
     )
     fig.subplots_adjust(
         left=0.0,
         right=1.0,
-        top=0.91 if compact else 0.895,
-        bottom=0.12 if compact else 0.105,
+        top=MAP_MARGIN_TOP,
+        bottom=MAP_MARGIN_BOTTOM,
     )
-    _attack_arrow(fig, ax, compact=compact)
+    _attack_arrow(fig, fig_w=fig_w)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
