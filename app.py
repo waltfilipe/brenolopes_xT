@@ -16,7 +16,7 @@ for _path in (_APP_ROOT, _APP_ROOT / "scripts_ballcarriers"):
 import streamlit as st
 
 import carries_engine as ce
-from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map
+from carries_maps import draw_all_carries_map, draw_dribble_map, draw_impact_pass_map, draw_typical_impact_pass_map
 
 DATA_CACHE_VERSION = ce.DATA_CACHE_VERSION
 IMPACT_MODEL_DEFAULT = ce.IMPACT_MODEL_DEFAULT
@@ -125,6 +125,20 @@ st.markdown(
         font-size: 0.88rem;
         margin-bottom: 0.35rem;
     }
+    .headline-rank-leader {
+        color: #c9a227;
+        font-weight: 700;
+    }
+    .metric-rank-sub {
+        color: #64748b;
+        font-size: 0.74rem;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    .metric-rank-leader {
+        color: #c9a227;
+        font-weight: 700;
+    }
     .cmp-arrow {
         font-size: 1rem;
         font-weight: 800;
@@ -137,12 +151,6 @@ st.markdown(
         flex-direction: column;
         gap: 0.12rem;
         min-width: 0;
-    }
-    .metric-rank-sub {
-        color: #64748b;
-        font-size: 0.74rem;
-        font-weight: 600;
-        line-height: 1.2;
     }
     .metric-tip {
         position: relative;
@@ -444,16 +452,20 @@ def _metric_rank_subline(player: dict, metric_ranks: dict, key: str) -> str:
     return f"{rank}º entre {group}"
 
 
-def _headline_html(player: dict, metric_ranks: dict) -> str:
+def _headline_html(player: dict, metric_ranks: dict, *, highlight_leader: bool = False) -> str:
     summary = build_headline_summary(player, metric_ranks)
     warnings = _rating_warnings_html(player)
+    rank_line = summary["rank_line"]
+    rank_cls = "headline-rank"
+    if highlight_leader and rank_line.startswith("Líder entre"):
+        rank_cls += " headline-rank-leader"
     return (
         '<div class="headline-block">'
         f'<div class="headline-top">'
         f'<span class="headline-score">{html.escape(summary["score"])}</span>'
         f'<span class="headline-band">{html.escape(summary["band"])}</span>'
         f"</div>"
-        f'<div class="headline-rank">{html.escape(summary["rank_line"])}</div>'
+        f'<div class="{rank_cls}">{html.escape(rank_line)}</div>'
         f'{warnings}'
         "</div>"
     )
@@ -488,6 +500,8 @@ def _metric_line_html(
     player: dict,
     *,
     show_rank: bool = True,
+    show_rank_subline: bool = True,
+    highlight_leader: bool = False,
     use_tooltip_label: bool = True,
     peer: dict | None = None,
 ) -> str:
@@ -506,12 +520,19 @@ def _metric_line_html(
                 f'<span class="rank-tipbox">{rank}/{total}</span>'
                 f"</span>"
             )
-        sub = _metric_rank_subline(player, metric_ranks, key)
-        if sub:
-            rank_sub = f'<div class="metric-rank-sub">{html.escape(sub)}</div>'
+        if show_rank_subline:
+            sub = _metric_rank_subline(player, metric_ranks, key)
+            if sub:
+                sub_cls = "metric-rank-sub"
+                if highlight_leader and sub.startswith("Líder entre"):
+                    sub_cls += " metric-rank-leader"
+                rank_sub = f'<div class="{sub_cls}">{html.escape(sub)}</div>'
     label_block = f'<div class="metric-label-block">{label_html}{rank_sub}</div>'
     arrow = _comparison_arrow_html(player.get(key), peer.get(key) if peer else None) if peer else ""
-    extras = [part for part in (badge, arrow) if part]
+    if peer and not show_rank:
+        extras = [part for part in (arrow,) if part]
+    else:
+        extras = [part for part in (badge, arrow) if part]
     value_html = (
         f'<span class="val-wrap">{"".join(extras)}<span class="stat-val">{html.escape(value)}</span></span>'
         if extras
@@ -560,6 +581,8 @@ def _build_sections_html(
     sections: list[tuple[str, str | None, tuple[str, ...], bool]],
     *,
     peer: dict | None = None,
+    show_rank_subline: bool = True,
+    highlight_leader: bool = False,
 ) -> str:
     parts: list[str] = []
     for title, section_key, keys, show_rank in sections:
@@ -578,6 +601,8 @@ def _build_sections_html(
                     metric_ranks,
                     player,
                     show_rank=show_rank,
+                    show_rank_subline=show_rank_subline,
+                    highlight_leader=highlight_leader,
                     peer=peer,
                 )
             )
@@ -622,7 +647,12 @@ def _player_card_html(
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
     return (
         '<div class="player-card">'
-        + _build_sections_html(player, metric_ranks, sections)
+        + _build_sections_html(
+            player,
+            metric_ranks,
+            sections,
+            highlight_leader=True,
+        )
         + "</div>"
     )
 
@@ -691,8 +721,13 @@ def render_player_layout(player: dict, carries, dribbles) -> None:
         '<div class="player-card player-info-card">'
         f"<h3>{html.escape(player['player_name'])}</h3>"
         f'<div class="sub">{html.escape(player.get("team", "—"))} · {html.escape(str(player.get("position", "—")))}</div>'
-        f"{_headline_html(player, metric_ranks)}"
-        + _build_sections_html(player, metric_ranks, general_sections)
+        f"{_headline_html(player, metric_ranks, highlight_leader=True)}"
+        + _build_sections_html(
+            player,
+            metric_ranks,
+            general_sections,
+            highlight_leader=True,
+        )
         + "</div>"
     )
 
@@ -721,7 +756,7 @@ def _resolve_player(
 def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
     metric_ranks = player.get("metric_ranks") if isinstance(player.get("metric_ranks"), dict) else {}
     sections: list[tuple[str, str | None, tuple[str, ...], bool]] = [
-        ("Métricas", None, COMPARISON_METRIC_KEYS, True),
+        ("Métricas", None, COMPARISON_METRIC_KEYS, False),
     ]
     header = (
         '<div class="player-card player-info-card">'
@@ -731,7 +766,13 @@ def _comparison_stats_card(player: dict, peer: dict | None = None) -> str:
         f'{html.escape(str(player.get("position_group", "—")))}</div>'
         f"{_headline_html(player, metric_ranks)}"
     )
-    body = _build_sections_html(player, metric_ranks, sections, peer=peer)
+    body = _build_sections_html(
+        player,
+        metric_ranks,
+        sections,
+        peer=peer,
+        show_rank_subline=False,
+    )
     return header + body + "</div>"
 
 
@@ -785,6 +826,14 @@ def render_comparison_section(
         with col:
             if carries is None or carries.empty:
                 st.warning(f"Sem conduções de impacto para {player['player_name']}.")
+            elif player.get("is_position_average"):
+                fig = draw_typical_impact_pass_map(
+                    carries,
+                    player["player_name"],
+                    team_label,
+                    compact=False,
+                )
+                st.pyplot(fig, clear_figure=True, use_container_width=True)
             else:
                 fig = draw_impact_pass_map(
                     carries,

@@ -20,6 +20,9 @@ MAP_REF_WIDTH = 9.6
 FIELD_X, FIELD_Y = 120.0, 80.0
 PASS_DEST_HEATMAP_COLS = 12
 PASS_DEST_HEATMAP_ROWS = 8
+TYPICAL_IMPACT_GRID_COLS = 10
+TYPICAL_IMPACT_GRID_ROWS = 6
+MAX_TYPICAL_IMPACT_VECTORS = 10
 ARROW_WIDTH = 0.75
 ARROW_HEADWIDTH = 1.15
 ARROW_HEADLENGTH = 1.15
@@ -197,6 +200,101 @@ def draw_impact_pass_map(
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
     ax.set_title(
         f"{player_name}\nConduções de impacto · {match_label}",
+        color="white", fontsize=8.4 * scale, pad=5,
+    )
+    _attack_arrow(fig, fig_w=fig_w)
+    return fig
+
+
+def _typical_impact_vectors(
+    subset,
+    *,
+    max_vectors: int = MAX_TYPICAL_IMPACT_VECTORS,
+    grid_cols: int = TYPICAL_IMPACT_GRID_COLS,
+    grid_rows: int = TYPICAL_IMPACT_GRID_ROWS,
+) -> list[dict]:
+    """Cluster impact carries by coarse start/end bins; return the most frequent patterns."""
+    if subset is None or subset.empty:
+        return []
+
+    x_bins = np.linspace(0.0, FIELD_X, grid_cols + 1)
+    y_bins = np.linspace(0.0, FIELD_Y, grid_rows + 1)
+    clusters: dict[tuple[int, int, int, int], list] = {}
+
+    for row in subset.itertuples(index=False):
+        sx = int(np.clip(np.digitize(row.x_start, x_bins, right=True) - 1, 0, grid_cols - 1))
+        sy = int(np.clip(np.digitize(row.y_start, y_bins, right=True) - 1, 0, grid_rows - 1))
+        ex = int(np.clip(np.digitize(row.x_end, x_bins, right=True) - 1, 0, grid_cols - 1))
+        ey = int(np.clip(np.digitize(row.y_end, y_bins, right=True) - 1, 0, grid_rows - 1))
+        clusters.setdefault((sx, sy, ex, ey), []).append(row)
+
+    ordered = sorted(clusters.values(), key=len, reverse=True)[:max_vectors]
+    vectors: list[dict] = []
+    for rows in ordered:
+        high_count = sum(bool(getattr(r, "high_impact_success", False)) for r in rows)
+        vectors.append({
+            "x_start": float(np.median([r.x_start for r in rows])),
+            "y_start": float(np.median([r.y_start for r in rows])),
+            "x_end": float(np.median([r.x_end for r in rows])),
+            "y_end": float(np.median([r.y_end for r in rows])),
+            "count": len(rows),
+            "high_impact": high_count >= len(rows) / 2,
+        })
+    return vectors
+
+
+def draw_typical_impact_pass_map(
+    passes,
+    player_name: str,
+    match_label: str = "todos os jogos",
+    *,
+    max_vectors: int = MAX_TYPICAL_IMPACT_VECTORS,
+    compact: bool = True,
+):
+    """Representative impact-carry vectors — most common binned start→end patterns."""
+    if compact:
+        figsize = (FIG_W_COMPACT, FIG_H_COMPACT)
+        dpi = FIG_DPI_COMPACT
+    else:
+        figsize = (FIG_W, FIG_H)
+        dpi = FIG_DPI
+
+    fig_w = figsize[0]
+    scale = _map_scale(fig_w)
+    subset = passes[passes["impact_success"] & passes["has_end"]].copy()
+    vectors = _typical_impact_vectors(subset, max_vectors=max_vectors)
+    fig, ax, pitch = _base_pitch(figsize=figsize, dpi=dpi)
+
+    if not vectors:
+        ax.text(60, 40, "Sem conduções de impacto", ha="center", va="center", color="white", fontsize=9)
+    else:
+        max_count = max(v["count"] for v in vectors)
+        for vector in vectors:
+            is_high = bool(vector["high_impact"])
+            color = COLOR_HIGHLY_PROGRESSIVE if is_high else COLOR_PROGRESSIVE
+            freq = vector["count"] / max_count
+            alpha = 0.55 + 0.35 * freq
+            width_scale = 0.85 + 0.35 * freq
+            _delicate_arrows(
+                pitch, ax,
+                vector["x_start"], vector["y_start"], vector["x_end"], vector["y_end"],
+                color, scale * width_scale, alpha=alpha,
+            )
+            pitch.scatter(
+                vector["x_start"], vector["y_start"],
+                s=PASS_START_MARKER_SIZE + 2 * freq, marker="o", color=color,
+                edgecolors="white", linewidths=0.35, ax=ax, zorder=6, alpha=alpha,
+            )
+
+    legend_handles = [
+        Line2D([0], [0], color=COLOR_PROGRESSIVE, lw=1.4 * scale, label="Padrão frequente", alpha=0.80),
+        Line2D([0], [0], color=COLOR_HIGHLY_PROGRESSIVE, lw=1.4 * scale, label="Padrão de alto impacto", alpha=0.85),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=COLOR_PROGRESSIVE,
+               markersize=4, linestyle="None", label="Origem típica"),
+    ]
+    _add_map_legend(ax, legend_handles, fig_w=fig_w)
+    ax.set_title(
+        f"{player_name}\nPadrões típicos de condução de impacto · {match_label}",
         color="white", fontsize=8.4 * scale, pad=5,
     )
     _attack_arrow(fig, fig_w=fig_w)
