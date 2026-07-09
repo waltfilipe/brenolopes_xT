@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
+from matplotlib.patches import FancyArrowPatch, Rectangle
 from mplsoccer import Pitch
 
 FIG_W, FIG_H = 10.0, 6.67
@@ -68,35 +68,36 @@ def _add_map_legend(ax, handles: list, *, fig_w: float) -> None:
     leg.get_frame().set_alpha(0.90)
 
 
-def _attack_arrow(ax, *, fig_w: float) -> None:
+def _attack_arrow(fig, *, fig_w: float) -> None:
     scale = _map_scale(fig_w)
-    ax.annotate(
-        "",
-        xy=(68.0, 3.4),
-        xytext=(52.0, 3.4),
-        arrowprops=dict(
+    fig.patches.append(
+        FancyArrowPatch(
+            (0.44, 0.055),
+            (0.56, 0.055),
+            transform=fig.transFigure,
             arrowstyle="-|>",
-            color="#b0bdd0",
-            lw=1.65 * scale,
             mutation_scale=13 * scale,
-        ),
-        zorder=20,
+            linewidth=1.65 * scale,
+            color="#b0bdd0",
+        )
     )
-    ax.text(
-        60.0,
-        1.0,
+    fig.text(
+        0.50,
+        0.012,
         "Direção de ataque",
         ha="center",
         va="bottom",
+        transform=fig.transFigure,
         fontsize=7.5 * scale,
         color="#b0bdd0",
-        zorder=20,
     )
 
 
-def _finish_map(fig, ax, *, fig_w: float) -> None:
-    _attack_arrow(ax, fig_w=fig_w)
-    fig.subplots_adjust(left=0.02, right=0.99, top=0.99, bottom=0.04)
+def _finish_map(fig, ax, *, fig_w: float, title: str) -> None:
+    scale = _map_scale(fig_w)
+    ax.set_title(title, color="white", fontsize=9.0 * scale, pad=8)
+    fig.subplots_adjust(left=0.02, right=0.99, top=0.90, bottom=0.14)
+    _attack_arrow(fig, fig_w=fig_w)
 
 
 def _delicate_arrows(pitch, ax, x1, y1, x2, y2, color, scale: float, *, alpha: float) -> None:
@@ -153,7 +154,7 @@ def draw_all_carries_map(
                markersize=4, linestyle="None", label="Origem da condução"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w, title="Todas as conduções")
     return fig
 
 
@@ -205,7 +206,7 @@ def draw_impact_pass_map(
                markersize=4, linestyle="None", label="Origem"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w, title="Conduções de impacto")
     return fig
 
 
@@ -296,7 +297,7 @@ def draw_typical_impact_pass_map(
                markersize=4, linestyle="None", label="Origem típica"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w, title="Padrões típicos de condução de impacto")
     return fig
 
 
@@ -348,7 +349,7 @@ def draw_dribble_map(
                linestyle="None", label="Drible falho"),
     ]
     _add_map_legend(ax, legend_handles, fig_w=fig_w)
-    _finish_map(fig, ax, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w, title="Dribles")
     return fig
 
 
@@ -416,5 +417,5 @@ def draw_pass_destination_heatmap(
     cbar.ax.yaxis.set_tick_params(color="#ffffff", labelsize=6)
     plt.setp(cbar.ax.axes.get_yticklabels(), color="#ffffff")
     cbar.set_label("Conduções impact", color="#c7cdda", fontsize=7 * scale)
-    _finish_map(fig, ax, fig_w=fig_w)
+    _finish_map(fig, ax, fig_w=fig_w, title="Destino — conduções de impacto")
     return fig
