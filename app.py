@@ -265,6 +265,8 @@ st.title("Ball Carry & Dribble — Brasileirão Série A")
 
 LOCKED_DASHBOARD_PLAYER_NAME = "Breno Lopes"
 LOCKED_COMPARISON_AVG_LABEL = "Average - Wingers"
+WINGERS_POSITION_GROUP = "Wingers"
+COMPARISON_SELECT_KEY = "comparison_player_select"
 
 COMPARISON_METRIC_KEYS: tuple[str, ...] = (
     "carries_total",
@@ -323,6 +325,58 @@ def _player_id_by_name(players: list[dict], name: str) -> str | None:
         if player.get("player_name") == name:
             return str(player["player_id"])
     return None
+
+
+def _option_label_for_id(
+    options: list[tuple[str, str, str, str]],
+    player_id: str,
+) -> str | None:
+    for pid, _, _, label in options:
+        if str(pid) == str(player_id):
+            return label
+    return None
+
+
+def _winger_comparison_options(
+    players: list[dict],
+    position_averages: list[dict],
+) -> list[tuple[str, str, str, str]]:
+    wingers = [
+        player
+        for player in players
+        if str(player.get("position_group") or "—") == WINGERS_POSITION_GROUP
+        and not is_position_average_player_id(str(player["player_id"]))
+    ]
+    winger_avg = next(
+        (
+            player
+            for player in position_averages
+            if str(player.get("position_group") or "") == WINGERS_POSITION_GROUP
+        ),
+        None,
+    )
+    averages = [winger_avg] if winger_avg else None
+    return _player_options(wingers, position_averages=averages)
+
+
+def _default_comparison_labels(
+    options: list[tuple[str, str, str, str]],
+    *,
+    all_players: list[dict],
+) -> list[str]:
+    labels: list[str] = []
+    avg_id = next(
+        (player_id for player_id, _, _, _ in options if is_position_average_player_id(player_id)),
+        None,
+    )
+    breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
+    for player_id in (avg_id, breno_id):
+        if not player_id:
+            continue
+        label = _option_label_for_id(options, player_id)
+        if label and label not in labels:
+            labels.append(label)
+    return labels
 
 
 def _player_options(
@@ -765,26 +819,40 @@ def render_comparison_section(
     carries_by_player: dict,
 ) -> None:
     st.subheader("Side-by-side comparison")
-
-    breno_id = _player_id_by_name(all_players, LOCKED_DASHBOARD_PLAYER_NAME)
-    avg_player = next(
-        (p for p in position_averages if p.get("player_name") == LOCKED_COMPARISON_AVG_LABEL),
-        None,
+    st.caption(
+        "Select two wingers — or the winger average — to compare maps and metrics."
     )
-    if not avg_player or not breno_id or breno_id not in players_by_id:
-        st.error("Could not load fixed comparison (Average - Wingers vs Breno Lopes).")
+
+    options = _winger_comparison_options(all_players, position_averages)
+    if not options:
+        st.info("No wingers available for comparison.")
         return
 
-    resolved: list[tuple[str, dict]] = [
-        (
-            str(avg_player["player_id"]),
-            _resolve_player(dict(avg_player), pool_by_position),
-        ),
-        (
-            str(breno_id),
-            _resolve_player(dict(players_by_id[breno_id]), pool_by_position),
-        ),
-    ]
+    labels = [option[3] for option in options]
+    id_by_label = {option[3]: option[0] for option in options}
+
+    if COMPARISON_SELECT_KEY not in st.session_state:
+        defaults = _default_comparison_labels(options, all_players=all_players)
+        if defaults:
+            st.session_state[COMPARISON_SELECT_KEY] = defaults
+
+    selected_labels = st.multiselect(
+        "Players (choose 2)",
+        options=labels,
+        key=COMPARISON_SELECT_KEY,
+        max_selections=2,
+        placeholder="Select two wingers",
+    )
+
+    if len(selected_labels) < 2:
+        st.info("Select exactly two wingers to compare.")
+        return
+
+    resolved: list[tuple[str, dict]] = []
+    for label in selected_labels:
+        player_id = id_by_label[label]
+        player = _resolve_player(dict(players_by_id[player_id]), pool_by_position)
+        resolved.append((player_id, player))
 
     col_left, col_right = st.columns(2, gap="medium")
     for col, (player_id, player), (_, peer) in zip(
